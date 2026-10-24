@@ -20,7 +20,7 @@ import kotlin.test.*
 
 class OrderApiTest {
     private fun config() = AppConfig.fromEnv(
-        mapOf(
+        System.getenv() + mapOf(
             "APP_ENV" to "test",
             "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",

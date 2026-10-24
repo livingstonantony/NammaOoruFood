@@ -31,8 +31,8 @@ class AccountSeeder(
 
     private fun seedIfMissing(username: String, password: String, role: Role, displayName: String) {
         db.transaction { conn ->
-            if (users.findByUsername(conn, username) == null) {
-                users.create(conn, username, hasher.hash(password), role, displayName, null)
+            if (users.findByUsername(username) == null) {
+                users.create(username, hasher.hash(password), role, displayName, null)
             }
         }
     }

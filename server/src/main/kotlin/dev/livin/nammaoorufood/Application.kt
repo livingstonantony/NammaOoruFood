@@ -3,21 +3,21 @@ package dev.livin.nammaoorufood
 import com.zaxxer.hikari.HikariDataSource
 import dev.livin.nammaoorufood.config.AppConfig
 import dev.livin.nammaoorufood.admin.AdminService
-import dev.livin.nammaoorufood.admin.JdbcAdminRepository
+import dev.livin.nammaoorufood.admin.ExposedAdminRepository
 import dev.livin.nammaoorufood.admin.adminRoutes
 import dev.livin.nammaoorufood.auth.*
 import dev.livin.nammaoorufood.database.Database
 import dev.livin.nammaoorufood.database.DatabaseFactory
 import dev.livin.nammaoorufood.hotel.HotelService
-import dev.livin.nammaoorufood.hotel.JdbcHotelRepository
+import dev.livin.nammaoorufood.hotel.ExposedHotelRepository
 import dev.livin.nammaoorufood.hotel.hotelRoutes
-import dev.livin.nammaoorufood.notification.JdbcNotificationRepository
+import dev.livin.nammaoorufood.notification.ExposedNotificationRepository
 import dev.livin.nammaoorufood.notification.NotificationService
 import dev.livin.nammaoorufood.notification.notificationRoutes
-import dev.livin.nammaoorufood.order.JdbcOrderRepository
+import dev.livin.nammaoorufood.order.ExposedOrderRepository
 import dev.livin.nammaoorufood.order.OrderService
 import dev.livin.nammaoorufood.order.orderRoutes
-import dev.livin.nammaoorufood.user.JdbcUserRepository
+import dev.livin.nammaoorufood.user.ExposedUserRepository
 import dev.livin.nammaoorufood.plugins.configureErrorHandling
 import dev.livin.nammaoorufood.plugins.configureSerialization
 import io.ktor.server.application.*
@@ -45,22 +45,33 @@ fun main() {
 data class HealthResponse(val status: String)
 
 fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
+    DatabaseFactory.migrate(config.database)
     val dataSource: HikariDataSource = DatabaseFactory.createDataSource(config.database)
-    DatabaseFactory.migrate(dataSource)
+    try {
+        DatabaseFactory.validateConnection(dataSource)
+    } catch (failure: Throwable) {
+        dataSource.close()
+        throw failure
+    }
     monitor.subscribe(ApplicationStopped) { dataSource.close() }
 
-    val db = Database(dataSource)
-    val users = JdbcUserRepository()
+    val db = try {
+        Database(dataSource)
+    } catch (failure: Throwable) {
+        dataSource.close()
+        throw failure
+    }
+    val users = ExposedUserRepository()
     val hasher = PasswordHasher()
     val tokens = TokenService(config.auth)
-    val sessionRepository = JdbcSessionRepository()
+    val sessionRepository = ExposedSessionRepository()
     val authService = AuthService(db, users, sessionRepository, hasher, tokens)
-    val hotelRepository = JdbcHotelRepository()
+    val hotelRepository = ExposedHotelRepository()
     val hotelService = HotelService(db, hotelRepository, users, hasher)
-    val notificationRepository = JdbcNotificationRepository()
-    val orderRepository = JdbcOrderRepository()
+    val notificationRepository = ExposedNotificationRepository()
+    val orderRepository = ExposedOrderRepository()
     val orderService = OrderService(db, orderRepository, hotelRepository, notificationRepository)
-    val adminService = AdminService(db, JdbcAdminRepository(), orderRepository, sessionRepository)
+    val adminService = AdminService(db, ExposedAdminRepository(), orderRepository, sessionRepository)
     val notificationService = NotificationService(db, notificationRepository)
     AccountSeeder(db, users, hasher, config.auth).run()
 

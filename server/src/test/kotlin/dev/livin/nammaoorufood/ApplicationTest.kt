@@ -11,7 +11,7 @@ import kotlin.test.*
 class ApplicationTest {
 
     private val testConfig = AppConfig.fromEnv(
-        mapOf(
+        System.getenv() + mapOf(
             "APP_ENV" to "test",
             "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
         ),

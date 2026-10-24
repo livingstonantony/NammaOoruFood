@@ -36,13 +36,19 @@ data class AppConfig(
                 env[key] ?: if (production) error("Missing required environment variable $key") else devDefault
             val jwtSecret = required("JWT_SECRET", "dev-only-secret-change-me-dev-only-secret-change-me")
             check(jwtSecret.length >= 32) { "JWT_SECRET must be at least 32 characters" }
+            val poolSize = env["DB_POOL_SIZE"]?.let {
+                it.toIntOrNull() ?: error("DB_POOL_SIZE must be an integer")
+            } ?: 10
+            require(poolSize in 1..100) { "DB_POOL_SIZE must be between 1 and 100" }
             return AppConfig(
                 environment = environment,
                 database = DatabaseConfig(
                     url = required("DB_URL", "jdbc:mysql://localhost:3306/nammaoorufood?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"),
-                    user = required("DB_USER", "root"),
-                    password = required("DB_PASSWORD", "root"),
-                    maxPoolSize = env["DB_POOL_SIZE"]?.toIntOrNull() ?: 10,
+                    user = env["DB_USER"]?.takeIf { it.isNotBlank() }
+                        ?: error("Missing required environment variable DB_USER"),
+                    password = env["DB_PASSWORD"]?.takeIf { it.isNotBlank() }
+                        ?: error("Missing required environment variable DB_PASSWORD"),
+                    maxPoolSize = poolSize,
                 ),
                 auth = AuthConfig(
                     jwtSecret = jwtSecret,

@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import dev.livin.nammaoorufood.config.DatabaseConfig
 import org.flywaydb.core.Flyway
-import javax.sql.DataSource
 
 object DatabaseFactory {
     fun createDataSource(config: DatabaseConfig): HikariDataSource =
@@ -14,18 +13,28 @@ object DatabaseFactory {
                 username = config.user
                 password = config.password
                 maximumPoolSize = config.maxPoolSize
+                minimumIdle = minOf(2, config.maxPoolSize)
                 isAutoCommit = false
-                // Schema timestamps are UTC; pin the session so CURRENT_TIMESTAMP defaults match.
+                poolName = "namma-ooru-food-db"
+                connectionTimeout = 10_000
+                validationTimeout = 5_000
+                initializationFailTimeout = 10_000
                 connectionInitSql = "SET time_zone = '+00:00'"
                 transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             },
         )
 
-    fun migrate(dataSource: DataSource) {
+    fun migrate(config: DatabaseConfig) {
         Flyway.configure()
-            .dataSource(dataSource)
+            .dataSource(config.url, config.user, config.password)
             .locations("classpath:db/migration")
             .load()
             .migrate()
+    }
+
+    fun validateConnection(dataSource: HikariDataSource) {
+        dataSource.connection.use { connection ->
+            check(connection.isValid(5)) { "Database connection validation failed" }
+        }
     }
 }

@@ -1,9 +1,23 @@
 package dev.livin.nammaoorufood.hotel
 
+import dev.livin.nammaoorufood.database.FoodItemsTable
+import dev.livin.nammaoorufood.database.HotelOperatingHoursTable
+import dev.livin.nammaoorufood.database.HotelsTable
+import dev.livin.nammaoorufood.database.MenuCategoriesTable
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.ResultRow
 import java.math.BigDecimal
 import java.sql.Connection
-import java.sql.ResultSet
-import java.sql.Statement
 import java.time.LocalTime
 
 interface HotelRepository {
@@ -15,7 +29,6 @@ interface HotelRepository {
     fun setAcceptingOrders(conn: Connection, id: Long, accepting: Boolean)
     fun hoursFor(conn: Connection, hotelIds: Collection<Long>): Map<Long, List<OperatingHour>>
     fun replaceHours(conn: Connection, hotelId: Long, hours: List<OperatingHour>)
-
     fun categories(conn: Connection, hotelId: Long): List<MenuCategory>
     fun createCategory(conn: Connection, hotelId: Long, name: String, sortOrder: Int): MenuCategory
     fun categoryBelongsToHotel(conn: Connection, categoryId: Long, hotelId: Long): Boolean
@@ -27,168 +40,180 @@ interface HotelRepository {
     fun deleteFoodItem(conn: Connection, hotelId: Long, itemId: Long): Boolean
 }
 
-class JdbcHotelRepository : HotelRepository {
-    private val hotelCols = "id, owner_id, name, description, address, phone, approval_status, accepting_orders"
-
+class ExposedHotelRepository : HotelRepository {
     override fun create(conn: Connection, ownerId: Long, name: String, description: String?, address: String, phone: String?): Hotel {
-        val id = conn.prepareStatement(
-            "INSERT INTO hotels (owner_id, name, description, address, phone) VALUES (?, ?, ?, ?, ?)",
-            Statement.RETURN_GENERATED_KEYS,
-        ).use {
-            it.setLong(1, ownerId); it.setString(2, name); it.setString(3, description); it.setString(4, address); it.setString(5, phone)
-            it.executeUpdate()
-            it.generatedKeys.use { k -> k.next(); k.getLong(1) }
-        }
+        val id = HotelsTable.insert {
+            it[HotelsTable.ownerId] = ownerId
+            it[HotelsTable.name] = name
+            it[HotelsTable.description] = description
+            it[HotelsTable.address] = address
+            it[HotelsTable.phone] = phone
+        }[HotelsTable.id]
         return Hotel(id, ownerId, name, description, address, phone, ApprovalStatus.PENDING, false)
     }
 
     override fun update(conn: Connection, id: Long, name: String, description: String?, address: String, phone: String?) {
-        conn.prepareStatement("UPDATE hotels SET name = ?, description = ?, address = ?, phone = ? WHERE id = ?").use {
-            it.setString(1, name); it.setString(2, description); it.setString(3, address); it.setString(4, phone); it.setLong(5, id)
-            it.executeUpdate()
+        HotelsTable.update({ HotelsTable.id eq id }) {
+            it[HotelsTable.name] = name
+            it[HotelsTable.description] = description
+            it[HotelsTable.address] = address
+            it[HotelsTable.phone] = phone
         }
     }
 
     override fun findById(conn: Connection, id: Long): Hotel? =
-        conn.prepareStatement("SELECT $hotelCols FROM hotels WHERE id = ?").use {
-            it.setLong(1, id)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toHotel() else null }
-        }
+        HotelsTable.selectAll().where { HotelsTable.id eq id }.limit(1).singleOrNull()?.toHotel()
 
     override fun search(conn: Connection, query: String?, approvedOnly: Boolean, ownerId: Long?): List<Hotel> {
-        val where = mutableListOf("1 = 1")
-        if (approvedOnly) where += "approval_status = 'APPROVED'"
-        if (ownerId != null) where += "owner_id = ?"
-        if (!query.isNullOrBlank()) where += "name LIKE ?"
-        return conn.prepareStatement("SELECT $hotelCols FROM hotels WHERE ${where.joinToString(" AND ")} ORDER BY name").use {
-            var i = 1
-            if (ownerId != null) it.setLong(i++, ownerId)
+        val conditions = buildList<Op<Boolean>> {
+            if (approvedOnly) add(HotelsTable.approvalStatus eq ApprovalStatus.APPROVED)
+            if (ownerId != null) add(HotelsTable.ownerId eq ownerId)
             if (!query.isNullOrBlank()) {
                 val escaped = query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                it.setString(i, "%$escaped%")
+                add(HotelsTable.name like "%$escaped%")
             }
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toHotel() else null }.toList() }
         }
+        val queryRows = HotelsTable.selectAll().apply {
+            if (conditions.isNotEmpty()) where { conditions.reduce { left, right -> left and right } }
+        }
+        return queryRows.orderBy(HotelsTable.name to SortOrder.ASC).map { it.toHotel() }
     }
 
     override fun setApproval(conn: Connection, id: Long, status: ApprovalStatus) {
-        conn.prepareStatement("UPDATE hotels SET approval_status = ?, accepting_orders = IF(? = 'APPROVED', accepting_orders, FALSE) WHERE id = ?").use {
-            it.setString(1, status.name); it.setString(2, status.name); it.setLong(3, id)
-            it.executeUpdate()
+        HotelsTable.update({ HotelsTable.id eq id }) {
+            it[approvalStatus] = status
+            if (status != ApprovalStatus.APPROVED) it[acceptingOrders] = false
         }
     }
 
     override fun setAcceptingOrders(conn: Connection, id: Long, accepting: Boolean) {
-        conn.prepareStatement("UPDATE hotels SET accepting_orders = ? WHERE id = ?").use {
-            it.setBoolean(1, accepting); it.setLong(2, id)
-            it.executeUpdate()
-        }
+        HotelsTable.update({ HotelsTable.id eq id }) { it[acceptingOrders] = accepting }
     }
 
     override fun hoursFor(conn: Connection, hotelIds: Collection<Long>): Map<Long, List<OperatingHour>> {
         if (hotelIds.isEmpty()) return emptyMap()
-        val marks = hotelIds.joinToString(",") { "?" }
-        return conn.prepareStatement("SELECT hotel_id, day_of_week, opens_at, closes_at FROM hotel_operating_hours WHERE hotel_id IN ($marks) ORDER BY day_of_week").use {
-            hotelIds.forEachIndexed { i, id -> it.setLong(i + 1, id) }
-            it.executeQuery().use { rs ->
-                val out = mutableMapOf<Long, MutableList<OperatingHour>>()
-                while (rs.next()) {
-                    out.getOrPut(rs.getLong("hotel_id")) { mutableListOf() } +=
-                        OperatingHour(rs.getInt("day_of_week"), rs.getTime("opens_at").toLocalTime(), rs.getTime("closes_at").toLocalTime())
-                }
-                out
+        return HotelOperatingHoursTable.selectAll()
+            .where { HotelOperatingHoursTable.hotelId inList hotelIds }
+            .orderBy(HotelOperatingHoursTable.dayOfWeek to SortOrder.ASC)
+            .map { row ->
+                row[HotelOperatingHoursTable.hotelId] to OperatingHour(
+                    row[HotelOperatingHoursTable.dayOfWeek].toInt(),
+                    row[HotelOperatingHoursTable.opensAt],
+                    row[HotelOperatingHoursTable.closesAt],
+                )
             }
-        }
+            .groupBy({ it.first }, { it.second })
     }
 
     override fun replaceHours(conn: Connection, hotelId: Long, hours: List<OperatingHour>) {
-        conn.prepareStatement("DELETE FROM hotel_operating_hours WHERE hotel_id = ?").use { it.setLong(1, hotelId); it.executeUpdate() }
-        conn.prepareStatement("INSERT INTO hotel_operating_hours (hotel_id, day_of_week, opens_at, closes_at) VALUES (?, ?, ?, ?)").use {
-            hours.forEach { h ->
-                it.setLong(1, hotelId); it.setInt(2, h.dayOfWeek)
-                it.setTime(3, java.sql.Time.valueOf(h.opensAt)); it.setTime(4, java.sql.Time.valueOf(h.closesAt))
-                it.addBatch()
-            }
-            it.executeBatch()
+        HotelOperatingHoursTable.deleteWhere { HotelOperatingHoursTable.hotelId eq hotelId }
+        HotelOperatingHoursTable.batchInsert(hours) { hour ->
+            this[HotelOperatingHoursTable.hotelId] = hotelId
+            this[HotelOperatingHoursTable.dayOfWeek] = hour.dayOfWeek.toByte()
+            this[HotelOperatingHoursTable.opensAt] = hour.opensAt
+            this[HotelOperatingHoursTable.closesAt] = hour.closesAt
         }
     }
 
     override fun categories(conn: Connection, hotelId: Long): List<MenuCategory> =
-        conn.prepareStatement("SELECT id, hotel_id, name, sort_order FROM menu_categories WHERE hotel_id = ? ORDER BY sort_order, name").use {
-            it.setLong(1, hotelId)
-            it.executeQuery().use { rs ->
-                generateSequence { if (rs.next()) MenuCategory(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getInt(4)) else null }.toList()
+        MenuCategoriesTable.selectAll()
+            .where { MenuCategoriesTable.hotelId eq hotelId }
+            .orderBy(MenuCategoriesTable.sortOrder to SortOrder.ASC, MenuCategoriesTable.name to SortOrder.ASC)
+            .map {
+                MenuCategory(it[MenuCategoriesTable.id], it[MenuCategoriesTable.hotelId], it[MenuCategoriesTable.name], it[MenuCategoriesTable.sortOrder])
             }
-        }
 
     override fun createCategory(conn: Connection, hotelId: Long, name: String, sortOrder: Int): MenuCategory {
-        val id = conn.prepareStatement("INSERT INTO menu_categories (hotel_id, name, sort_order) VALUES (?, ?, ?)", Statement.RETURN_GENERATED_KEYS).use {
-            it.setLong(1, hotelId); it.setString(2, name); it.setInt(3, sortOrder)
-            it.executeUpdate()
-            it.generatedKeys.use { k -> k.next(); k.getLong(1) }
-        }
+        val id = MenuCategoriesTable.insert {
+            it[MenuCategoriesTable.hotelId] = hotelId
+            it[MenuCategoriesTable.name] = name
+            it[MenuCategoriesTable.sortOrder] = sortOrder
+        }[MenuCategoriesTable.id]
         return MenuCategory(id, hotelId, name, sortOrder)
     }
 
     override fun categoryBelongsToHotel(conn: Connection, categoryId: Long, hotelId: Long): Boolean =
-        conn.prepareStatement("SELECT 1 FROM menu_categories WHERE id = ? AND hotel_id = ?").use {
-            it.setLong(1, categoryId); it.setLong(2, hotelId)
-            it.executeQuery().use { rs -> rs.next() }
-        }
-
-    private val foodCols = "id, hotel_id, category_id, name, description, price, available"
+        MenuCategoriesTable.selectAll().where {
+            (MenuCategoriesTable.id eq categoryId) and (MenuCategoriesTable.hotelId eq hotelId)
+        }.limit(1).singleOrNull() != null
 
     override fun foodItems(conn: Connection, hotelId: Long): List<FoodItem> =
-        conn.prepareStatement("SELECT $foodCols FROM food_items WHERE hotel_id = ? ORDER BY name").use {
-            it.setLong(1, hotelId)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toFood() else null }.toList() }
-        }
+        FoodItemsTable.selectAll().where { FoodItemsTable.hotelId eq hotelId }
+            .orderBy(FoodItemsTable.name to SortOrder.ASC)
+            .map { it.toFoodItem() }
 
     override fun findFoodItem(conn: Connection, hotelId: Long, itemId: Long): FoodItem? =
-        conn.prepareStatement("SELECT $foodCols FROM food_items WHERE id = ? AND hotel_id = ?").use {
-            it.setLong(1, itemId); it.setLong(2, hotelId)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toFood() else null }
-        }
+        FoodItemsTable.selectAll().where {
+            (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
+        }.limit(1).singleOrNull()?.toFoodItem()
 
-    override fun createFoodItem(conn: Connection, hotelId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean): FoodItem {
-        val id = conn.prepareStatement(
-            "INSERT INTO food_items (hotel_id, category_id, name, description, price, available) VALUES (?, ?, ?, ?, ?, ?)",
-            Statement.RETURN_GENERATED_KEYS,
-        ).use {
-            it.setLong(1, hotelId); it.setObject(2, categoryId); it.setString(3, name); it.setString(4, description)
-            it.setBigDecimal(5, price); it.setBoolean(6, available)
-            it.executeUpdate()
-            it.generatedKeys.use { k -> k.next(); k.getLong(1) }
-        }
+    override fun createFoodItem(
+        conn: Connection,
+        hotelId: Long,
+        categoryId: Long?,
+        name: String,
+        description: String?,
+        price: BigDecimal,
+        available: Boolean,
+    ): FoodItem {
+        val id = FoodItemsTable.insert {
+            it[FoodItemsTable.hotelId] = hotelId
+            it[FoodItemsTable.categoryId] = categoryId
+            it[FoodItemsTable.name] = name
+            it[FoodItemsTable.description] = description
+            it[FoodItemsTable.price] = price
+            it[FoodItemsTable.available] = available
+        }[FoodItemsTable.id]
         return FoodItem(id, hotelId, categoryId, name, description, price, available)
     }
 
-    override fun updateFoodItem(conn: Connection, hotelId: Long, itemId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean): Boolean =
-        conn.prepareStatement("UPDATE food_items SET category_id = ?, name = ?, description = ?, price = ?, available = ? WHERE id = ? AND hotel_id = ?").use {
-            it.setObject(1, categoryId); it.setString(2, name); it.setString(3, description); it.setBigDecimal(4, price)
-            it.setBoolean(5, available); it.setLong(6, itemId); it.setLong(7, hotelId)
-            it.executeUpdate() == 1
-        }
+    override fun updateFoodItem(
+        conn: Connection,
+        hotelId: Long,
+        itemId: Long,
+        categoryId: Long?,
+        name: String,
+        description: String?,
+        price: BigDecimal,
+        available: Boolean,
+    ): Boolean = FoodItemsTable.update({
+        (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
+    }) {
+        it[FoodItemsTable.categoryId] = categoryId
+        it[FoodItemsTable.name] = name
+        it[FoodItemsTable.description] = description
+        it[FoodItemsTable.price] = price
+        it[FoodItemsTable.available] = available
+    } == 1
 
     override fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean): Boolean =
-        conn.prepareStatement("UPDATE food_items SET available = ? WHERE id = ? AND hotel_id = ?").use {
-            it.setBoolean(1, available); it.setLong(2, itemId); it.setLong(3, hotelId)
-            it.executeUpdate() == 1
-        }
+        FoodItemsTable.update({
+            (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
+        }) { it[FoodItemsTable.available] = available } == 1
 
     override fun deleteFoodItem(conn: Connection, hotelId: Long, itemId: Long): Boolean =
-        conn.prepareStatement("DELETE FROM food_items WHERE id = ? AND hotel_id = ?").use {
-            it.setLong(1, itemId); it.setLong(2, hotelId)
-            it.executeUpdate() == 1
-        }
+        FoodItemsTable.deleteWhere {
+            (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
+        } == 1
 
-    private fun ResultSet.toHotel() = Hotel(
-        getLong("id"), getLong("owner_id"), getString("name"), getString("description"), getString("address"),
-        getString("phone"), ApprovalStatus.valueOf(getString("approval_status")), getBoolean("accepting_orders"),
+    private fun ResultRow.toHotel() = Hotel(
+        this[HotelsTable.id],
+        this[HotelsTable.ownerId],
+        this[HotelsTable.name],
+        this[HotelsTable.description],
+        this[HotelsTable.address],
+        this[HotelsTable.phone],
+        this[HotelsTable.approvalStatus],
+        this[HotelsTable.acceptingOrders],
     )
 
-    private fun ResultSet.toFood() = FoodItem(
-        getLong("id"), getLong("hotel_id"), getObject("category_id") as Long?, getString("name"), getString("description"),
-        getBigDecimal("price"), getBoolean("available"),
+    private fun ResultRow.toFoodItem() = FoodItem(
+        this[FoodItemsTable.id],
+        this[FoodItemsTable.hotelId],
+        this[FoodItemsTable.categoryId],
+        this[FoodItemsTable.name],
+        this[FoodItemsTable.description],
+        this[FoodItemsTable.price],
+        this[FoodItemsTable.available],
     )
 }

@@ -175,7 +175,7 @@ class HotelService(
         val hash = hasher.hash(req.password)
         return db.transaction { conn ->
             try {
-                users.create(conn, username, hash, Role.HOTEL_OWNER, displayName, req.phone?.trim()?.takeIf { it.isNotEmpty() }).toDto()
+                users.create(username, hash, Role.HOTEL_OWNER, displayName, req.phone?.trim()?.takeIf { it.isNotEmpty() }).toDto()
             } catch (e: SQLIntegrityConstraintViolationException) {
                 throw ConflictException("Username is already taken")
             }

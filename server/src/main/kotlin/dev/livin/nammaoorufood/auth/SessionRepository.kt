@@ -1,7 +1,19 @@
 package dev.livin.nammaoorufood.auth
 
+import dev.livin.nammaoorufood.database.AuthSessionsTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import java.sql.Connection
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 data class AuthSession(val id: Long, val userId: Long)
@@ -9,86 +21,81 @@ data class AuthSession(val id: Long, val userId: Long)
 interface SessionRepository {
     fun create(conn: Connection, userId: Long, refreshHash: String, expiresAt: Instant): Long
     fun findActiveByRefreshHash(conn: Connection, refreshHash: String, now: Instant): AuthSession?
-    // Returns false if the old hash was already rotated/revoked, so a refresh token can be used only once.
     fun rotate(conn: Connection, sessionId: Long, oldHash: String, newHash: String, expiresAt: Instant): Boolean
     fun isActive(conn: Connection, sessionId: Long, now: Instant): Boolean
     fun revoke(conn: Connection, sessionId: Long, now: Instant)
     fun revokeByRefreshHash(conn: Connection, refreshHash: String, now: Instant)
     fun revokeAllForUser(conn: Connection, userId: Long, now: Instant)
-    // Removes sessions that expired or were revoked before [cutoff]; returns the number deleted.
     fun deleteInactiveBefore(conn: Connection, cutoff: Instant): Int
 }
 
-private fun Instant.utc() = java.time.LocalDateTime.ofInstant(this, ZoneOffset.UTC)
+private fun Instant.utc() = LocalDateTime.ofInstant(this, ZoneOffset.UTC)
 
-class JdbcSessionRepository : SessionRepository {
+class ExposedSessionRepository : SessionRepository {
     override fun create(conn: Connection, userId: Long, refreshHash: String, expiresAt: Instant): Long =
-        conn.prepareStatement(
-            "INSERT INTO auth_sessions (user_id, refresh_token_hash, expires_at) VALUES (?, ?, ?)",
-            java.sql.Statement.RETURN_GENERATED_KEYS,
-        ).use {
-            it.setLong(1, userId)
-            it.setString(2, refreshHash)
-            it.setObject(3, expiresAt.utc())
-            it.executeUpdate()
-            it.generatedKeys.use { keys -> keys.next(); keys.getLong(1) }
-        }
+        AuthSessionsTable.insert {
+            it[AuthSessionsTable.userId] = userId
+            it[refreshTokenHash] = refreshHash
+            it[AuthSessionsTable.expiresAt] = expiresAt.utc()
+        }[AuthSessionsTable.id]
 
     override fun findActiveByRefreshHash(conn: Connection, refreshHash: String, now: Instant): AuthSession? =
-        conn.prepareStatement(
-            "SELECT id, user_id FROM auth_sessions WHERE refresh_token_hash = ? AND revoked_at IS NULL AND expires_at > ? FOR UPDATE",
-        ).use {
-            it.setString(1, refreshHash)
-            it.setObject(2, now.utc())
-            it.executeQuery().use { rs -> if (rs.next()) AuthSession(rs.getLong("id"), rs.getLong("user_id")) else null }
-        }
+        AuthSessionsTable.selectAll()
+            .where {
+                (AuthSessionsTable.refreshTokenHash eq refreshHash) and
+                    AuthSessionsTable.revokedAt.isNull() and
+                    (AuthSessionsTable.expiresAt greater now.utc())
+            }
+            .forUpdate()
+            .limit(1)
+            .singleOrNull()
+            ?.let { AuthSession(it[AuthSessionsTable.id], it[AuthSessionsTable.userId]) }
 
     override fun rotate(conn: Connection, sessionId: Long, oldHash: String, newHash: String, expiresAt: Instant): Boolean =
-        conn.prepareStatement(
-            "UPDATE auth_sessions SET refresh_token_hash = ?, expires_at = ? WHERE id = ? AND refresh_token_hash = ? AND revoked_at IS NULL",
-        ).use {
-            it.setString(1, newHash)
-            it.setObject(2, expiresAt.utc())
-            it.setLong(3, sessionId)
-            it.setString(4, oldHash)
-            it.executeUpdate() == 1
-        }
+        AuthSessionsTable.update({
+            (AuthSessionsTable.id eq sessionId) and
+                (AuthSessionsTable.refreshTokenHash eq oldHash) and
+                AuthSessionsTable.revokedAt.isNull()
+        }) {
+            it[refreshTokenHash] = newHash
+            it[AuthSessionsTable.expiresAt] = expiresAt.utc()
+        } == 1
 
     override fun isActive(conn: Connection, sessionId: Long, now: Instant): Boolean =
-        conn.prepareStatement("SELECT 1 FROM auth_sessions WHERE id = ? AND revoked_at IS NULL AND expires_at > ?").use {
-            it.setLong(1, sessionId)
-            it.setObject(2, now.utc())
-            it.executeQuery().use { rs -> rs.next() }
-        }
+        AuthSessionsTable.selectAll().where {
+            (AuthSessionsTable.id eq sessionId) and
+                AuthSessionsTable.revokedAt.isNull() and
+                (AuthSessionsTable.expiresAt greater now.utc())
+        }.limit(1).singleOrNull() != null
 
     override fun revoke(conn: Connection, sessionId: Long, now: Instant) {
-        conn.prepareStatement("UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").use {
-            it.setObject(1, now.utc())
-            it.setLong(2, sessionId)
-            it.executeUpdate()
+        AuthSessionsTable.update({
+            (AuthSessionsTable.id eq sessionId) and AuthSessionsTable.revokedAt.isNull()
+        }) {
+            it[revokedAt] = now.utc()
         }
     }
 
     override fun revokeByRefreshHash(conn: Connection, refreshHash: String, now: Instant) {
-        conn.prepareStatement("UPDATE auth_sessions SET revoked_at = ? WHERE refresh_token_hash = ? AND revoked_at IS NULL").use {
-            it.setObject(1, now.utc())
-            it.setString(2, refreshHash)
-            it.executeUpdate()
+        AuthSessionsTable.update({
+            (AuthSessionsTable.refreshTokenHash eq refreshHash) and AuthSessionsTable.revokedAt.isNull()
+        }) {
+            it[revokedAt] = now.utc()
         }
     }
 
     override fun revokeAllForUser(conn: Connection, userId: Long, now: Instant) {
-        conn.prepareStatement("UPDATE auth_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").use {
-            it.setObject(1, now.utc())
-            it.setLong(2, userId)
-            it.executeUpdate()
+        AuthSessionsTable.update({
+            (AuthSessionsTable.userId eq userId) and AuthSessionsTable.revokedAt.isNull()
+        }) {
+            it[revokedAt] = now.utc()
         }
     }
 
-    override fun deleteInactiveBefore(conn: Connection, cutoff: Instant): Int =
-        conn.prepareStatement("DELETE FROM auth_sessions WHERE expires_at < ? OR revoked_at < ?").use {
-            it.setObject(1, cutoff.utc())
-            it.setObject(2, cutoff.utc())
-            it.executeUpdate()
+    override fun deleteInactiveBefore(conn: Connection, cutoff: Instant): Int {
+        val time = cutoff.utc()
+        return AuthSessionsTable.deleteWhere {
+            (expiresAt less time) or (revokedAt less time)
         }
+    }
 }

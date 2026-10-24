@@ -7,7 +7,7 @@ Kotlin Multiplatform (Compose Multiplatform) clients plus a Ktor + MySQL backend
 
 | Module | Purpose |
 |---|---|
-| `server` | Ktor/Netty API, MySQL (Flyway migrations, plain JDBC), JWT + rotating refresh tokens |
+| `server` | Ktor/Netty API, MySQL (Flyway migrations, Exposed transactions, HikariCP), JWT + rotating refresh tokens |
 | `app/shared` | Shared Compose UI: login, Customer app, Hotel Owner app, Admin dashboard (chosen by the user's role) |
 | `app/androidApp`, `app/iosApp`, `app/desktopApp`, `app/webApp` | Platform entry points calling `App()` |
 | `core` | Shared KMP code |
@@ -16,13 +16,15 @@ Kotlin Multiplatform (Compose Multiplatform) clients plus a Ktor + MySQL backend
 
 ```
 mysql -uroot -p -e "CREATE DATABASE nammaoorufood; CREATE DATABASE nammaoorufood_test;"
-APP_ENV=local ./gradlew :server:run          # http://localhost:8080
-./gradlew :server:test                       # needs the nammaoorufood_test database
+APP_ENV=local DB_URL=jdbc:mysql://localhost:3306/nammaoorufood DB_USER=namma_app DB_PASSWORD='replace-me' ./gradlew :server:run
+APP_ENV=test DB_URL=jdbc:mysql://localhost:3306/nammaoorufood_test DB_USER=namma_test DB_PASSWORD='replace-me' ./gradlew :server:test
 ./gradlew :app:shared:jvmTest                # client tests
 ```
 
-* `APP_ENV` is **required**. Only `local` and `test` enable development defaults (JWT secret, root/root DB, seeded accounts
+* `APP_ENV` is **required**. Set `DB_USER` and `DB_PASSWORD` in every environment; there are no database credential defaults. Only `local` and `test` enable development defaults (JWT secret, seeded accounts
   `admin`/`owner`/`customer`); any other value is treated as production and requires every variable in `.env.example`.
+* Startup validates/applies Flyway migrations before creating the HikariCP pool. Flyway remains the only schema manager;
+  Exposed maps the existing tables and manages transactions. Existing non-user repositories retain their SQL inside those transactions.
 * API docs: Swagger UI at `/swagger` (spec: `server/src/main/resources/openapi/documentation.yaml`). Disabled in production
   unless `ENABLE_API_DOCS=true`. The spec is maintained by hand, so update it when routes change.
 * Order lifecycle: `PLACED → ACCEPTED → PREPARING → READY_FOR_PICKUP → COMPLETED`, or `PLACED → REJECTED`.

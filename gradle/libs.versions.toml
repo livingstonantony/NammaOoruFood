@@ -19,6 +19,7 @@ logback = "1.6.5"
 material3 = "1.12.0-alpha03"
 hikari = "7.1.0"
 flyway = "13.11.1"
+exposed = "0.61.0"
 mysql = "26.10.0"
 kotlinx-serialization = "1.9.0"
 koin = "4.1.0"
@@ -67,6 +68,9 @@ ktor-clientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiat
 hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-mysql = { module = "org.flywaydb:flyway-mysql", version.ref = "flyway" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
 mysql-connector = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
 kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktor-serverAuth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }

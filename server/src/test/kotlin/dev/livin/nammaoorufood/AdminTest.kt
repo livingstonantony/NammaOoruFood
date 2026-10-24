@@ -20,7 +20,7 @@ import kotlin.test.*
 
 class AdminTest {
     private fun config() = AppConfig.fromEnv(
-        mapOf(
+        System.getenv() + mapOf(
             "APP_ENV" to "test",
             "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",
@@ -123,7 +123,8 @@ class AdminTest {
     @Test
     fun cannotDeactivateNonCustomersOrUnknownIds() = testApplication {
         val f = fixture()
-        val adminId = DriverManager.getConnection(config().database.url, "root", "root").use { c ->
+        val database = config().database
+        val adminId = DriverManager.getConnection(database.url, database.user, database.password).use { c ->
             c.createStatement().executeQuery("SELECT id FROM users WHERE username='admin'").use { it.next(); it.getLong(1) }
         }
         assertEquals(HttpStatusCode.NotFound, f.c.send(HttpMethod.Patch, "/admin/customers/$adminId/active", f.admin, ActiveRequest(false)).status)

@@ -23,7 +23,11 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :server:test :server:buildFatJar --console=plain
+      - name: Test server
+        env:
+          DB_USER: root
+          DB_PASSWORD: root
+        run: ./gradlew :server:test :server:buildFatJar --console=plain
 
   client:
     runs-on: ubuntu-latest

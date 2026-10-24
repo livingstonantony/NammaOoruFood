@@ -1,5 +1,25 @@
 package dev.livin.nammaoorufood.admin
 
+import dev.livin.nammaoorufood.database.HotelsTable
+import dev.livin.nammaoorufood.database.OrdersTable
+import dev.livin.nammaoorufood.database.UsersTable
+import dev.livin.nammaoorufood.order.OrderStatus
+import dev.livin.nammaoorufood.user.Role
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.sum
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.ResultRow
 import java.math.BigDecimal
 import java.sql.Connection
 import java.time.Instant
@@ -13,7 +33,6 @@ interface AdminRepository {
     fun countCustomers(conn: Connection, query: String?, active: Boolean?): Int
     fun findCustomer(conn: Connection, id: Long): CustomerDto?
     fun setCustomerActive(conn: Connection, id: Long, active: Boolean)
-    // Placed counts use created_at; completed/rejected/sales use the time the order reached that state (updated_at).
     fun hotelSales(conn: Connection, from: Instant, to: Instant): List<HotelSalesRaw>
     fun customerCounts(conn: Connection): Pair<Int, Int>
     fun hotelCounts(conn: Connection): Pair<Int, Int>
@@ -21,84 +40,120 @@ interface AdminRepository {
 
 private fun Instant.utc() = LocalDateTime.ofInstant(this, ZoneOffset.UTC)
 
-class JdbcAdminRepository : AdminRepository {
-    private val customerSelect = """
-        SELECT u.id, u.username, u.display_name, u.phone, u.active, u.created_at,
-               (SELECT COUNT(*) FROM orders o WHERE o.customer_id = u.id) AS order_count
-        FROM users u
-    """.trimIndent()
-
-    private fun where(query: String?, active: Boolean?) = buildString {
-        append("u.role = 'CUSTOMER'")
-        if (!query.isNullOrBlank()) append(" AND (u.username LIKE ? OR u.display_name LIKE ? OR u.phone LIKE ?)")
-        if (active != null) append(" AND u.active = ?")
-    }
-
-    private fun java.sql.PreparedStatement.bind(query: String?, active: Boolean?): Int {
-        var i = 1
-        if (!query.isNullOrBlank()) {
-            val like = "%" + query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-            repeat(3) { setString(i++, like) }
+class ExposedAdminRepository : AdminRepository {
+    private fun customerConditions(query: String?, active: Boolean?): List<Op<Boolean>> =
+        buildList {
+            add(UsersTable.role eq Role.CUSTOMER)
+            if (!query.isNullOrBlank()) {
+                val pattern = "%" + query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+                add(
+                    ((UsersTable.username like pattern) or (UsersTable.displayName like pattern)) or
+                        (UsersTable.phone like pattern),
+                )
+            }
+            if (active != null) add(UsersTable.active eq active)
         }
-        if (active != null) setBoolean(i++, active)
-        return i
-    }
 
-    override fun searchCustomers(conn: Connection, query: String?, active: Boolean?, limit: Int, offset: Int): List<CustomerDto> =
-        conn.prepareStatement("$customerSelect WHERE ${where(query, active)} ORDER BY u.created_at DESC, u.id DESC LIMIT ? OFFSET ?").use {
-            var i = it.bind(query, active)
-            it.setInt(i++, limit); it.setInt(i, offset)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toCustomer() else null }.toList() }
-        }
+    private fun customerQuery(query: String?, active: Boolean?) =
+        UsersTable.selectAll().where { customerConditions(query, active).reduce { left, right -> left and right } }
+
+    override fun searchCustomers(conn: Connection, query: String?, active: Boolean?, limit: Int, offset: Int): List<CustomerDto> {
+        val customers = customerQuery(query, active)
+            .orderBy(UsersTable.createdAt to SortOrder.DESC, UsersTable.id to SortOrder.DESC)
+            .limit(limit).offset(offset.toLong())
+            .toList()
+        if (customers.isEmpty()) return emptyList()
+        val ids = customers.map { it[UsersTable.id] }
+        val countsByCustomer = OrdersTable.select(OrdersTable.customerId, OrdersTable.id.count())
+            .where { OrdersTable.customerId inList ids }
+            .groupBy(OrdersTable.customerId)
+            .associate { it[OrdersTable.customerId] to it[OrdersTable.id.count()].toInt() }
+        return customers.map { it.toCustomer(countsByCustomer[it[UsersTable.id]] ?: 0) }
+    }
 
     override fun countCustomers(conn: Connection, query: String?, active: Boolean?): Int =
-        conn.prepareStatement("SELECT COUNT(*) FROM users u WHERE ${where(query, active)}").use {
-            it.bind(query, active)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
+        customerQuery(query, active).count().toInt()
 
-    override fun findCustomer(conn: Connection, id: Long): CustomerDto? =
-        conn.prepareStatement("$customerSelect WHERE u.role = 'CUSTOMER' AND u.id = ?").use {
-            it.setLong(1, id)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toCustomer() else null }
-        }
+    override fun findCustomer(conn: Connection, id: Long): CustomerDto? {
+        val customer = UsersTable.selectAll().where {
+            (UsersTable.role eq Role.CUSTOMER) and (UsersTable.id eq id)
+        }.limit(1).singleOrNull() ?: return null
+        val orderCount = OrdersTable.selectAll().where { OrdersTable.customerId eq id }.count().toInt()
+        return customer.toCustomer(orderCount)
+    }
 
     override fun setCustomerActive(conn: Connection, id: Long, active: Boolean) {
-        conn.prepareStatement("UPDATE users SET active = ? WHERE id = ? AND role = 'CUSTOMER'").use {
-            it.setBoolean(1, active); it.setLong(2, id)
-            it.executeUpdate()
+        UsersTable.update({
+            (UsersTable.id eq id) and (UsersTable.role eq Role.CUSTOMER)
+        }) {
+            it[UsersTable.active] = active
         }
     }
 
-    override fun hotelSales(conn: Connection, from: Instant, to: Instant): List<HotelSalesRaw> =
-        conn.prepareStatement(
-            """SELECT h.id, h.name,
-                 (SELECT COUNT(*) FROM orders o WHERE o.hotel_id = h.id AND o.created_at >= ? AND o.created_at < ?) AS placed,
-                 (SELECT COUNT(*) FROM orders o WHERE o.hotel_id = h.id AND o.status = 'COMPLETED' AND o.updated_at >= ? AND o.updated_at < ?) AS completed,
-                 (SELECT COUNT(*) FROM orders o WHERE o.hotel_id = h.id AND o.status = 'REJECTED' AND o.updated_at >= ? AND o.updated_at < ?) AS rejected,
-                 (SELECT COALESCE(SUM(o.total), 0) FROM orders o WHERE o.hotel_id = h.id AND o.status = 'COMPLETED' AND o.updated_at >= ? AND o.updated_at < ?) AS sales
-               FROM hotels h ORDER BY sales DESC, h.name""",
-        ).use {
-            for (i in 0 until 4) { it.setObject(i * 2 + 1, from.utc()); it.setObject(i * 2 + 2, to.utc()) }
-            it.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) HotelSalesRaw(rs.getLong("id"), rs.getString("name"), rs.getInt("placed"), rs.getInt("completed"), rs.getInt("rejected"), rs.getBigDecimal("sales")) else null
-                }.toList()
+    override fun hotelSales(conn: Connection, from: Instant, to: Instant): List<HotelSalesRaw> {
+        val start = from.utc()
+        val end = to.utc()
+        val placed = OrdersTable.select(OrdersTable.hotelId, OrdersTable.id.count())
+            .where { (OrdersTable.createdAt greaterEq start) and (OrdersTable.createdAt less end) }
+            .groupBy(OrdersTable.hotelId)
+            .associate { it[OrdersTable.hotelId] to it[OrdersTable.id.count()].toInt() }
+        val completedOrders = OrdersTable.select(OrdersTable.hotelId, OrdersTable.id.count())
+            .where {
+                (OrdersTable.status eq OrderStatus.COMPLETED) and
+                    (OrdersTable.updatedAt greaterEq start) and (OrdersTable.updatedAt less end)
             }
-        }
+            .groupBy(OrdersTable.hotelId)
+            .associate { it[OrdersTable.hotelId] to it[OrdersTable.id.count()].toInt() }
+        val rejectedOrders = OrdersTable.select(OrdersTable.hotelId, OrdersTable.id.count())
+            .where {
+                (OrdersTable.status eq OrderStatus.REJECTED) and
+                    (OrdersTable.updatedAt greaterEq start) and (OrdersTable.updatedAt less end)
+            }
+            .groupBy(OrdersTable.hotelId)
+            .associate { it[OrdersTable.hotelId] to it[OrdersTable.id.count()].toInt() }
+        val sales = OrdersTable.select(OrdersTable.hotelId, OrdersTable.total.sum())
+            .where {
+                (OrdersTable.status eq OrderStatus.COMPLETED) and
+                    (OrdersTable.updatedAt greaterEq start) and (OrdersTable.updatedAt less end)
+            }
+            .groupBy(OrdersTable.hotelId)
+            .associate { it[OrdersTable.hotelId] to it[OrdersTable.total.sum()] }
 
-    override fun customerCounts(conn: Connection): Pair<Int, Int> =
-        conn.prepareStatement("SELECT COUNT(*), COALESCE(SUM(active), 0) FROM users WHERE role = 'CUSTOMER'").use {
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) to rs.getInt(2) }
-        }
+        return HotelsTable.selectAll()
+            .map { row ->
+                val hotelId = row[HotelsTable.id]
+                HotelSalesRaw(
+                    hotelId,
+                    row[HotelsTable.name],
+                    placed[hotelId] ?: 0,
+                    completedOrders[hotelId] ?: 0,
+                    rejectedOrders[hotelId] ?: 0,
+                    sales[hotelId] ?: BigDecimal.ZERO,
+                )
+            }
+            .sortedWith(compareByDescending<HotelSalesRaw> { it.sales }.thenBy { it.hotelName })
+    }
 
-    override fun hotelCounts(conn: Connection): Pair<Int, Int> =
-        conn.prepareStatement("SELECT COALESCE(SUM(approval_status = 'APPROVED'), 0), COALESCE(SUM(approval_status = 'PENDING'), 0) FROM hotels").use {
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) to rs.getInt(2) }
-        }
+    override fun customerCounts(conn: Connection): Pair<Int, Int> {
+        val customerRows = UsersTable.select(UsersTable.active)
+            .where { UsersTable.role eq Role.CUSTOMER }
+            .toList()
+        return customerRows.size to customerRows.count { it[UsersTable.active] }
+    }
 
-    private fun java.sql.ResultSet.toCustomer() = CustomerDto(
-        getLong("id"), getString("username"), getString("display_name"), getString("phone"), getBoolean("active"),
-        getObject("created_at", LocalDateTime::class.java).toInstant(ZoneOffset.UTC).toString(), getInt("order_count"),
+    override fun hotelCounts(conn: Connection): Pair<Int, Int> {
+        val statuses = HotelsTable.select(HotelsTable.approvalStatus).toList().map { it[HotelsTable.approvalStatus] }
+        return statuses.count { it == dev.livin.nammaoorufood.hotel.ApprovalStatus.APPROVED } to
+            statuses.count { it == dev.livin.nammaoorufood.hotel.ApprovalStatus.PENDING }
+    }
+
+    private fun ResultRow.toCustomer(orderCount: Int) = CustomerDto(
+        this[UsersTable.id],
+        this[UsersTable.username],
+        this[UsersTable.displayName],
+        this[UsersTable.phone],
+        this[UsersTable.active],
+        this[UsersTable.createdAt].toInstant(ZoneOffset.UTC).toString(),
+        orderCount,
     )
 }
