@@ -59,8 +59,17 @@ kotlin {
             implementation(libs.ktor.clientOkhttp)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
-            implementation(libs.androidx.datastore.preferences)
         }
+        val nonWebMain = create("nonWebMain") {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.androidx.datastore.preferences)
+            }
+        }
+        androidMain.get().dependsOn(nonWebMain)
+        jvmMain.get().dependsOn(nonWebMain)
+        iosMain.get().dependsOn(nonWebMain)
+
         commonMain.dependencies {
             api(project(":core"))
             implementation(libs.compose.runtime)
@@ -89,11 +98,9 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
-            implementation(libs.androidx.datastore.preferences)
         }
         iosMain.dependencies {
             implementation(libs.ktor.clientDarwin)
-            implementation(libs.androidx.datastore.preferences)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)
