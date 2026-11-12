@@ -2,12 +2,15 @@ package dev.livin.nammaoorufood.di
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.livin.nammaoorufood.auth.DataStoreSessionStore
 import dev.livin.nammaoorufood.auth.SessionStore
 import dev.livin.nammaoorufood.auth.StoredSession
 import dev.livin.nammaoorufood.network.ApiJson
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.*
+import okio.Path.Companion.toPath
 import platform.CoreFoundation.*
 import platform.Foundation.*
 import platform.Security.*
@@ -75,8 +78,22 @@ class KeychainSessionStore : SessionStore {
     }
 }
 
+@OptIn(ExperimentalForeignApi::class)
 private class IosPlatformServices : PlatformServices {
-    override val sessionStore: SessionStore = KeychainSessionStore()
+    override val sessionStore: SessionStore = DataStoreSessionStore(
+        PreferenceDataStoreFactory.createWithPath(
+            produceFile = {
+                val documentDirectory = NSFileManager.defaultManager.URLForDirectory(
+                    directory = NSDocumentDirectory,
+                    inDomain = NSUserDomainMask,
+                    appropriateForURL = null,
+                    create = false,
+                    error = null
+                )
+                (requireNotNull(documentDirectory).path + "/namma_session.preferences_pb").toPath()
+            }
+        )
+    )
     override val engine: HttpClientEngine = Darwin.create()
     // Overridable with a `NammaApiUrl` key in the app Info.plist.
     override val baseUrl = (NSBundle.mainBundle.objectForInfoDictionaryKey("NammaApiUrl") as? String)

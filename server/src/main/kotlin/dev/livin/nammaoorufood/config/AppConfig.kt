@@ -44,10 +44,8 @@ data class AppConfig(
                 environment = environment,
                 database = DatabaseConfig(
                     url = required("DB_URL", "jdbc:mysql://localhost:3306/nammaoorufood?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"),
-                    user = env["DB_USER"]?.takeIf { it.isNotBlank() }
-                        ?: error("Missing required environment variable DB_USER"),
-                    password = env["DB_PASSWORD"]?.takeIf { it.isNotBlank() }
-                        ?: error("Missing required environment variable DB_PASSWORD"),
+                    user = required("DB_USER", "root"),
+                    password = required("DB_PASSWORD", "root"),
                     maxPoolSize = poolSize,
                 ),
                 auth = AuthConfig(

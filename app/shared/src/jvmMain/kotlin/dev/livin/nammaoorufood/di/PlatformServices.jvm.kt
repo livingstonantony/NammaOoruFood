@@ -2,6 +2,10 @@ package dev.livin.nammaoorufood.di
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import dev.livin.nammaoorufood.auth.DataStoreSessionStore
 import dev.livin.nammaoorufood.auth.SessionStore
 import dev.livin.nammaoorufood.auth.StoredSession
 import dev.livin.nammaoorufood.network.ApiJson
@@ -9,6 +13,7 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Path.Companion.toPath
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -69,8 +74,17 @@ class EncryptedFileSessionStore(
     private companion object { const val IV_BYTES = 12 }
 }
 
+fun createJvmDataStore(
+    dir: Path = Path.of(System.getProperty("user.home"), ".namma-ooru-food", System.getProperty("namma.variant") ?: "default")
+): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(
+    produceFile = {
+        Files.createDirectories(dir)
+        dir.resolve("namma_session.preferences_pb").toString().toPath()
+    }
+)
+
 private class JvmPlatformServices : PlatformServices {
-    override val sessionStore: SessionStore = EncryptedFileSessionStore()
+    override val sessionStore: SessionStore = DataStoreSessionStore(createJvmDataStore())
     override val engine: HttpClientEngine = CIO.create()
     override val baseUrl = System.getenv("NAMMA_API_URL") ?: "http://localhost:8080"
 }

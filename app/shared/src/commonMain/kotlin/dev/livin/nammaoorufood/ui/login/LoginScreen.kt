@@ -28,7 +28,7 @@ fun LoginContent(state: LoginState, notice: String?, onIntent: (LoginIntent) -> 
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Namma Ooru Food", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+            Text("Login", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(4.dp))
             Text("Sign in to continue", style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(24.dp))

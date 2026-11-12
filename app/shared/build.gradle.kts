@@ -59,6 +59,7 @@ kotlin {
             implementation(libs.ktor.clientOkhttp)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
+            implementation(libs.androidx.datastore.preferences)
         }
         commonMain.dependencies {
             api(project(":core"))
@@ -88,9 +89,11 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
+            implementation(libs.androidx.datastore.preferences)
         }
         iosMain.dependencies {
             implementation(libs.ktor.clientDarwin)
+            implementation(libs.androidx.datastore.preferences)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)

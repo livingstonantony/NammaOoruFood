@@ -8,6 +8,8 @@ import android.util.Base64
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.livin.nammaoorufood.auth.DataStoreSessionStore
 import dev.livin.nammaoorufood.auth.SessionStore
 import dev.livin.nammaoorufood.auth.StoredSession
 import dev.livin.nammaoorufood.network.ApiJson
@@ -15,6 +17,7 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Path.Companion.toPath
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -68,7 +71,11 @@ class KeystoreSessionStore(context: Context) : SessionStore {
 }
 
 private class AndroidPlatformServices(context: Context) : PlatformServices {
-    override val sessionStore: SessionStore = KeystoreSessionStore(context)
+    override val sessionStore: SessionStore = DataStoreSessionStore(
+        PreferenceDataStoreFactory.createWithPath(
+            produceFile = { context.filesDir.resolve("namma_session.preferences_pb").absolutePath.toPath() }
+        )
+    )
     override val engine: HttpClientEngine = OkHttp.create()
     // Set by the app manifest from the `nammaApiUrl` Gradle property; 10.0.2.2 is the host machine from the emulator.
     override val baseUrl = runCatching {
