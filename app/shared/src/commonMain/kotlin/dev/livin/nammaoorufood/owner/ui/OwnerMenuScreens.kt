@@ -35,7 +35,7 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            ScreenTitle("Menu")
+            ScreenTitle("Menu", modifier = Modifier.weight(1f))
             Button(onClick = { vm.dismissMessage(); creating = true }, modifier = Modifier.padding(end = 12.dp).height(48.dp)) { Text("+ Add item") }
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp)) }
@@ -43,8 +43,17 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
             Load.Loading -> CenteredLoading()
             is Load.Error -> ErrorState(m.message, vm::refresh)
             is Load.Success ->
-                if (m.data.items.isEmpty()) EmptyState("No items yet. Add your first dish.")
-                else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (m.data.items.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxSize().padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("No items yet. Add your first dish.", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { vm.dismissMessage(); creating = true }) { Text("+ Add item") }
+                    }
+                } else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(m.data.items, key = { it.id }) { item ->
                         AppCard {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -17,7 +17,11 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-enum class Tab(val title: String) { Home("Home"), Orders("Orders"), Profile("Profile") }
+enum class Tab(val title: String, val icon: String) {
+    Home("Home", "🏠"),
+    Orders("Orders", "🧾"),
+    Profile("Profile", "👤"),
+}
 
 sealed interface Route {
     data class Menu(val hotelId: Long) : Route
@@ -46,43 +50,52 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
     BackHandler(enabled = top != null || nav.tab != Tab.Home) {
         if (top != null) nav.pop() else nav.tab = Tab.Home
     }
-    Column(Modifier.fillMaxSize().safeContentPadding()) {
-        unread.unread.firstOrNull()?.let { n ->
-            NotificationBanner(
-                n,
-                onView = { notifications.dismiss(n.id); n.orderId?.let(nav::showOrder) },
-                onDismiss = { notifications.dismiss(n.id) },
-            )
-        }
-        Box(Modifier.weight(1f)) {
-            when (top) {
-                is Route.Menu -> MenuScreen(
-                    vm = koinViewModel(key = "${user.id}-menu-${top.hotelId}") { parametersOf(top.hotelId) },
-                    onBack = nav::pop,
-                    onOpenCart = { nav.push(Route.Cart) },
-                )
-                Route.Cart -> CartScreen(koinViewModel(key = "${user.id}-cart"), onBack = nav::pop, onOrderPlaced = nav::showOrder)
-                is Route.OrderDetail -> OrderDetailScreen(
-                    vm = koinViewModel(key = "${user.id}-order-${top.orderId}") { parametersOf(top.orderId) },
-                    onBack = nav::pop,
-                )
-                null -> when (nav.tab) {
-                    Tab.Home -> HotelListScreen(vm = koinViewModel(key = "${user.id}-hotels"), onOpenHotel = { nav.push(Route.Menu(it.id)) })
-                    Tab.Orders -> OrdersScreen(koinViewModel(key = "${user.id}-orders"), onOpenOrder = { nav.push(Route.OrderDetail(it)) })
-                    Tab.Profile -> ProfileScreen(user, session)
+    Scaffold(
+        bottomBar = {
+            if (top == null) {
+                NavigationBar {
+                    Tab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            selected = nav.tab == tab,
+                            onClick = { nav.tab = tab },
+                            icon = { Text(tab.icon, style = MaterialTheme.typography.titleMedium) },
+                            label = { Text(tab.title, style = MaterialTheme.typography.labelMedium) },
+                            alwaysShowLabel = true,
+                        )
+                    }
                 }
             }
         }
-        if (top == null) {
-            NavigationBar {
-                Tab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = nav.tab == tab,
-                        onClick = { nav.tab = tab },
-                        icon = {},
-                        label = { Text(tab.title, style = MaterialTheme.typography.titleSmall) },
-                        alwaysShowLabel = true,
+    ) { paddingValues ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            unread.unread.firstOrNull()?.let { n ->
+                NotificationBanner(
+                    n,
+                    onView = { notifications.dismiss(n.id); n.orderId?.let(nav::showOrder) },
+                    onDismiss = { notifications.dismiss(n.id) },
+                )
+            }
+            Box(Modifier.weight(1f)) {
+                when (top) {
+                    is Route.Menu -> MenuScreen(
+                        vm = koinViewModel(key = "${user.id}-menu-${top.hotelId}") { parametersOf(top.hotelId) },
+                        onBack = nav::pop,
+                        onOpenCart = { nav.push(Route.Cart) },
                     )
+                    Route.Cart -> CartScreen(koinViewModel(key = "${user.id}-cart"), onBack = nav::pop, onOrderPlaced = nav::showOrder)
+                    is Route.OrderDetail -> OrderDetailScreen(
+                        vm = koinViewModel(key = "${user.id}-order-${top.orderId}") { parametersOf(top.orderId) },
+                        onBack = nav::pop,
+                    )
+                    null -> when (nav.tab) {
+                        Tab.Home -> HotelListScreen(vm = koinViewModel(key = "${user.id}-hotels"), onOpenHotel = { nav.push(Route.Menu(it.id)) })
+                        Tab.Orders -> OrdersScreen(koinViewModel(key = "${user.id}-orders"), onOpenOrder = { nav.push(Route.OrderDetail(it)) })
+                        Tab.Profile -> ProfileScreen(user, session)
+                    }
                 }
             }
         }
