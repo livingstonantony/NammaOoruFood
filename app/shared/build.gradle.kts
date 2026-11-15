@@ -70,6 +70,17 @@ kotlin {
         jvmMain.get().dependsOn(nonWebMain)
         iosMain.get().dependsOn(nonWebMain)
 
+        val webMain = create("webMain") {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.ktor.clientJs)
+            }
+        }
+        jsMain.get().dependsOn(webMain)
+        wasmJsMain.get().dependsOn(webMain)
+        iosArm64Main.get().dependsOn(iosMain.get())
+        iosSimulatorArm64Main.get().dependsOn(iosMain.get())
+
         commonMain.dependencies {
             api(project(":core"))
             implementation(libs.compose.runtime)
