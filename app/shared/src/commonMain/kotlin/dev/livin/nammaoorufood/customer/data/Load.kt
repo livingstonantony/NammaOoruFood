@@ -10,7 +10,7 @@ sealed interface Load<out T> {
 
 fun <T> ApiResult<T>.errorMessage(): String = when (this) {
     is ApiResult.Rejected -> message
-    is ApiResult.NetworkError -> "Cannot reach the server. Check your connection."
+    is ApiResult.NetworkError -> if (message.isNotBlank()) "Cannot reach server ($message)" else "Cannot reach the server. Check your connection."
     is ApiResult.Success -> ""
 }
 

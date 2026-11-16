@@ -29,6 +29,8 @@ import io.ktor.http.HttpMethod
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.routing.*
+import io.ktor.server.websocket.WebSockets
+import dev.livin.nammaoorufood.websocket.websocketRoutes
 import dev.livin.nammaoorufood.maintenance.RetentionService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -99,11 +101,13 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
             allowHost(host, schemes = listOf(scheme))
         }
     }
+    install(WebSockets)
     configureSerialization()
     configureErrorHandling()
     configureAuthentication(authService, tokens, config.auth.loginRateLimitPerMinute)
 
     routing {
+        websocketRoutes()
         authRoutes(authService)
         hotelRoutes(hotelService)
         orderRoutes(orderService)

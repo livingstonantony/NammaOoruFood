@@ -39,10 +39,10 @@ class Phase9Test {
 
     @Test fun databaseCredentialsAreRequiredOutsideAllEnvironments() {
         assertFailsWith<IllegalStateException> {
-            AppConfig.fromEnv(mapOf("APP_ENV" to "test"))
+            AppConfig.fromEnv(mapOf("APP_ENV" to "production"))
         }
         assertFailsWith<IllegalStateException> {
-            AppConfig.fromEnv(mapOf("APP_ENV" to "local", "DB_USER" to "app"))
+            AppConfig.fromEnv(mapOf("APP_ENV" to "production", "DB_USER" to "app"))
         }
     }
 

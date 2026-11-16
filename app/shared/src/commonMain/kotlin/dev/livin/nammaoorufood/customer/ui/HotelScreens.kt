@@ -22,7 +22,19 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HotelListScreen(vm: HotelListViewModel, onOpenHotel: (HotelDto) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle("Hotels near you")
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ScreenTitle("Hotels near you", modifier = Modifier.weight(1f))
+            IconButton(
+                onClick = { vm.onIntent(HotelListIntent.Refresh) },
+                modifier = Modifier.padding(end = 8.dp),
+            ) {
+                Text("🔄", style = MaterialTheme.typography.titleMedium)
+            }
+        }
         OutlinedTextField(
             value = state.query,
             onValueChange = { vm.onIntent(HotelListIntent.QueryChanged(it)) },

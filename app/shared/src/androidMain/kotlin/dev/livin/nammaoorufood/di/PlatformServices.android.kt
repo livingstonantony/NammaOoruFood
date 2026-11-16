@@ -78,10 +78,33 @@ private class AndroidPlatformServices(context: Context) : PlatformServices {
     )
     override val engine: HttpClientEngine = OkHttp.create()
     // Set by the app manifest from the `nammaApiUrl` Gradle property; 10.0.2.2 is the host machine from the emulator.
-    override val baseUrl = runCatching {
-        context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
-            .metaData?.getString("namma.api.url")
-    }.getOrNull()?.takeIf { it.isNotBlank() } ?: "http://10.0.2.2:8080"
+    override val baseUrl: String = run {
+        val rawUrl = runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getApplicationInfo(
+                    context.packageName,
+                    PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong())
+                ).metaData?.getString("namma.api.url")
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+                    .metaData?.getString("namma.api.url")
+            }
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "http://192.168.0.3:8080"
+
+        val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic") ||
+            android.os.Build.MODEL.contains("google_sdk") ||
+            android.os.Build.MODEL.contains("Emulator") ||
+            android.os.Build.MODEL.contains("Android SDK built for x86") ||
+            android.os.Build.HARDWARE.contains("goldfish") ||
+            android.os.Build.HARDWARE.contains("ranchu")
+
+        if (!isEmulator && rawUrl.contains("10.0.2.2")) {
+            rawUrl.replace("10.0.2.2", "192.168.0.3")
+        } else {
+            rawUrl
+        }
+    }
 }
 
 @Composable

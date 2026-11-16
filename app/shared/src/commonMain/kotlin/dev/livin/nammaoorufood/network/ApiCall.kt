@@ -20,5 +20,6 @@ suspend inline fun <reified R> HttpClient.apiCall(block: HttpRequestBuilder.() -
 } catch (e: CancellationException) {
     throw e
 } catch (e: Exception) {
-    ApiResult.NetworkError(e.message ?: "Network error")
+    val detail = e.message?.takeIf { it.isNotBlank() } ?: e.toString()
+    ApiResult.NetworkError(detail)
 }

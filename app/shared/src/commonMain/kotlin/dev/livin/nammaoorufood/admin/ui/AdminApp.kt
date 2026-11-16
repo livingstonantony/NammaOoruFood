@@ -159,6 +159,31 @@ private fun HotelsScreen(vm: AdminHotelsViewModel) {
                                 Text(statusLabel(status), style = MaterialTheme.typography.labelLarge)
                             }
                             Text(hotel.address, style = MaterialTheme.typography.bodyMedium)
+                            hotel.phone?.let { Text("Phone: $it", style = MaterialTheme.typography.bodySmall) }
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = MaterialTheme.shapes.extraSmall,
+                                    color = if (hotel.acceptingOrders) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                                ) {
+                                    Text(
+                                        if (hotel.acceptingOrders) "🟢 Accepting orders" else "🔴 Orders paused",
+                                        Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                                Surface(
+                                    shape = MaterialTheme.shapes.extraSmall,
+                                    color = if (hotel.isOpen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                ) {
+                                    Text(
+                                        if (hotel.isOpen) "🟢 Open now" else "⚪ Closed now",
+                                        Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (status != "APPROVED") Button(enabled = !busy, onClick = { vm.setApproval(hotel.id, "APPROVED") }) { Text("Approve") }
                                 if (status == "PENDING") OutlinedButton(enabled = !busy, onClick = { vm.setApproval(hotel.id, "REJECTED") }) { Text("Reject") }

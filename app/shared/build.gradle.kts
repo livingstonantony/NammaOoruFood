@@ -96,6 +96,7 @@ kotlin {
             implementation(libs.kotlinx.coroutinesCore)
             implementation(libs.ktor.clientCore)
             implementation(libs.ktor.clientAuth)
+            implementation(libs.ktor.clientWebsockets)
             implementation(libs.ktor.clientContentNegotiation)
             implementation(libs.ktor.serializationKotlinxJson)
             implementation(libs.koin.core)

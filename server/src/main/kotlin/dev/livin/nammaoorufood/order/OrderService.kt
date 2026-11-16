@@ -13,6 +13,7 @@ import dev.livin.nammaoorufood.plugins.ForbiddenException
 import dev.livin.nammaoorufood.plugins.NotFoundException
 import dev.livin.nammaoorufood.plugins.ValidationException
 import dev.livin.nammaoorufood.user.Role
+import dev.livin.nammaoorufood.websocket.ServerEventBus
 import java.math.BigDecimal
 import java.sql.SQLIntegrityConstraintViolationException
 import java.time.Clock
@@ -57,7 +58,9 @@ class OrderService(
                 }
                 val total = lines.fold(BigDecimal.ZERO) { acc, l -> acc + l.lineTotal }
                 val id = orders.create(conn, p.userId, hotel.id, total, note, idempotencyKey, lines)
-                orders.findById(conn, id)!!.toDto() to true
+                val dto = orders.findById(conn, id)!!.toDto()
+                ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
+                dto to true
             }
         } catch (e: SQLIntegrityConstraintViolationException) {
             // A concurrent request with the same key won the race; return its order.
@@ -133,7 +136,9 @@ class OrderService(
             orders.updateStatus(conn, order.id, target)
             val updated = orders.findById(conn, order.id)!!
             notify(conn, updated)
-            updated.toDto()
+            val dto = updated.toDto()
+            ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
+            dto
         }
     }
 

@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.ktor.serverRateLimit)
     implementation(libs.ktor.serverSwagger)
     implementation(libs.ktor.serverCors)
+    implementation(libs.ktor.serverWebsockets)
     implementation(libs.bcrypt)
     implementation(libs.hikari)
     implementation(libs.flyway.core)
