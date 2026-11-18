@@ -90,7 +90,7 @@ private class AndroidPlatformServices(context: Context) : PlatformServices {
                 context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
                     .metaData?.getString("namma.api.url")
             }
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "http://192.168.0.3:8080"
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "http://10.0.2.2:8080"
 
         val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic") ||
             android.os.Build.MODEL.contains("google_sdk") ||
@@ -100,7 +100,7 @@ private class AndroidPlatformServices(context: Context) : PlatformServices {
             android.os.Build.HARDWARE.contains("ranchu")
 
         if (!isEmulator && rawUrl.contains("10.0.2.2")) {
-            rawUrl.replace("10.0.2.2", "192.168.0.3")
+            rawUrl.replace("10.0.2.2", "10.0.2.2")
         } else {
             rawUrl
         }

@@ -34,6 +34,7 @@ data class FoodItem(
     val description: String?,
     val price: BigDecimal,
     val available: Boolean,
+    val quantityAvailable: Int? = null,
 )
 
 object OperatingHours {
@@ -91,11 +92,13 @@ data class CategoryRequest(val name: String, val sortOrder: Int = 0)
 @Serializable
 data class FoodItemDto(
     val id: Long,
-    val categoryId: Long?,
+    val categoryId: Long? = null,
     val name: String,
-    val description: String?,
+    val description: String? = null,
     val price: String,
     val available: Boolean,
+    val quantityAvailable: Int? = null,
+    val trackInventory: Boolean = quantityAvailable != null,
 )
 
 @Serializable
@@ -105,10 +108,16 @@ data class FoodItemRequest(
     val price: String,
     val categoryId: Long? = null,
     val available: Boolean = true,
+    val quantityAvailable: Int? = null,
+    val trackInventory: Boolean = false,
 )
 
 @Serializable
-data class AvailabilityRequest(val available: Boolean)
+data class AvailabilityRequest(
+    val available: Boolean? = null,
+    val quantityAvailable: Int? = null,
+    val clearQuantity: Boolean = false,
+)
 
 @Serializable
 data class MenuResponse(val categories: List<CategoryDto>, val items: List<FoodItemDto>)
@@ -119,6 +128,6 @@ data class ApprovalRequest(val status: ApprovalStatus)
 @Serializable
 data class CreateOwnerRequest(val username: String, val password: String, val displayName: String, val phone: String? = null)
 
-fun FoodItem.toDto() = FoodItemDto(id, categoryId, name, description, price.setScale(2).toPlainString(), available)
+fun FoodItem.toDto() = FoodItemDto(id, categoryId, name, description, price.setScale(2).toPlainString(), available, quantityAvailable)
 fun MenuCategory.toDto() = CategoryDto(id, name, sortOrder)
 fun OperatingHour.toDto() = OperatingHourDto(dayOfWeek, opensAt.toString(), closesAt.toString())

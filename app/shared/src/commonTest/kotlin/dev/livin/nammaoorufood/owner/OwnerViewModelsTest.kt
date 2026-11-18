@@ -41,9 +41,9 @@ class FakeOwner : OwnerRepository {
     override suspend fun createCategory(hotelId: Long, name: String): ApiResult<CategoryDto> { categories += name; return ApiResult.Success(CategoryDto(7, name, 0)) }
     override suspend fun createItem(hotelId: Long, request: FoodItemRequest): ApiResult<FoodItemDto> { calls += "createItem"; return itemResult }
     override suspend fun updateItem(hotelId: Long, itemId: Long, request: FoodItemRequest): ApiResult<FoodItemDto> { calls += "updateItem"; return itemResult }
-    override suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean): ApiResult<FoodItemDto> {
-        calls += "avail$itemId=$available"
-        return ApiResult.Success(food(itemId, available = available))
+    override suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean?, quantityAvailable: Int?): ApiResult<FoodItemDto> {
+        calls += "avail$itemId=$available,$quantityAvailable"
+        return ApiResult.Success(food(itemId, available = available ?: true))
     }
     override suspend fun deleteItem(hotelId: Long, itemId: Long): ApiResult<Unit> { calls += "delete$itemId"; return ApiResult.Success(Unit) }
 }
@@ -166,16 +166,26 @@ class OwnerViewModelsTest {
         assertTrue(items.first { it.id == 2L }.available)
     }
 
+    @Test fun updateStockQuantityUpdatesStockAndAvailability() = runTest {
+        val vm = OwnerMenuViewModel(1, repo)
+        vm.updateStockQuantity(food(1), 10)
+        assertEquals("avail1=true,10", repo.calls.last())
+        vm.updateStockQuantity(food(1), 0)
+        assertEquals("avail1=false,0", repo.calls.last())
+        vm.updateStockQuantity(food(1), null)
+        assertEquals("avail1=true,null", repo.calls.last())
+    }
+
     @Test fun menuSaveValidatesThenCallsAndCloses() = runTest {
         val vm = OwnerMenuViewModel(1, repo)
         var closed = 0
-        vm.save(null, "Parotta", "", "abc", null, true) { closed++ }
+        vm.save(null, "Parotta", "", "abc", null, true, null) { closed++ }
         assertTrue(repo.calls.isEmpty())
         assertEquals(0, closed)
-        vm.save(null, "Parotta", "", "12.50", null, true) { closed++ }
+        vm.save(null, "Parotta", "", "12.50", null, true, 50) { closed++ }
         assertEquals(listOf("createItem"), repo.calls)
         assertEquals(1, closed)
-        vm.save(1, "Parotta", "", "12.50", null, true) { closed++ }
+        vm.save(1, "Parotta", "", "12.50", null, true, 50) { closed++ }
         assertEquals("updateItem", repo.calls.last())
     }
 
@@ -183,7 +193,7 @@ class OwnerViewModelsTest {
         repo.itemResult = ApiResult.Rejected(400, "Bad", false)
         val vm = OwnerMenuViewModel(1, repo)
         var closed = 0
-        vm.save(null, "Parotta", "", "12", null, true) { closed++ }
+        vm.save(null, "Parotta", "", "12", null, true, null) { closed++ }
         assertEquals(0, closed)
         assertEquals("Bad", vm.state.value.message)
         assertFalse(vm.state.value.saving)

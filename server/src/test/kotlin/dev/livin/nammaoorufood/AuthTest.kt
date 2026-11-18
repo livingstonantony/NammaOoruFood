@@ -52,7 +52,7 @@ class AuthTest {
                 }
             }
         }
-        return createClient { install(ContentNegotiation) { json() } }
+        return createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
     }
 
     private suspend fun HttpClient.login(username: String, password: String) =

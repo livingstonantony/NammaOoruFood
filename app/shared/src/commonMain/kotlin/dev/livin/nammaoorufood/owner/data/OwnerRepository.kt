@@ -25,7 +25,7 @@ interface OwnerRepository {
     suspend fun createCategory(hotelId: Long, name: String): ApiResult<CategoryDto>
     suspend fun createItem(hotelId: Long, request: FoodItemRequest): ApiResult<FoodItemDto>
     suspend fun updateItem(hotelId: Long, itemId: Long, request: FoodItemRequest): ApiResult<FoodItemDto>
-    suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean): ApiResult<FoodItemDto>
+    suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean? = null, quantityAvailable: Int? = null): ApiResult<FoodItemDto>
     suspend fun deleteItem(hotelId: Long, itemId: Long): ApiResult<Unit>
 }
 
@@ -69,7 +69,11 @@ class KtorOwnerRepository(private val client: HttpClient) : OwnerRepository {
         send<FoodItemDto>(HttpMethod.Post, "hotels/$hotelId/menu/items", request)
     override suspend fun updateItem(hotelId: Long, itemId: Long, request: FoodItemRequest) =
         send<FoodItemDto>(HttpMethod.Put, "hotels/$hotelId/menu/items/$itemId", request)
-    override suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean) =
-        send<FoodItemDto>(HttpMethod.Patch, "hotels/$hotelId/menu/items/$itemId/availability", AvailabilityRequest(available))
+    override suspend fun setItemAvailability(hotelId: Long, itemId: Long, available: Boolean?, quantityAvailable: Int?) =
+        send<FoodItemDto>(
+            HttpMethod.Patch,
+            "hotels/$hotelId/menu/items/$itemId/availability",
+            AvailabilityRequest(available = available, quantityAvailable = quantityAvailable, clearQuantity = (quantityAvailable == null && available == null))
+        )
     override suspend fun deleteItem(hotelId: Long, itemId: Long) = send<Unit>(HttpMethod.Delete, "hotels/$hotelId/menu/items/$itemId")
 }

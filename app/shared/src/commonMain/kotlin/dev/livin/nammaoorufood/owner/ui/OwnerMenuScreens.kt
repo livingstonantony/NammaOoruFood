@@ -55,19 +55,33 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                     }
                 } else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(m.data.items, key = { it.id }) { item ->
+                        val busy = item.id in state.busy
+                        val stock = item.quantityAvailable
                         AppCard {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text("₹${item.price}", style = MaterialTheme.typography.bodyLarge)
-                                    Text(if (item.available) "Available" else "Sold out", style = MaterialTheme.typography.labelLarge)
+                                    Text(
+                                        when {
+                                            stock != null && stock <= 0 -> "🔴 Out of stock (0 left)"
+                                            stock != null -> "📦 Stock: $stock left"
+                                            item.available -> "🟢 Available (Unlimited)"
+                                            else -> "🔴 Sold out"
+                                        },
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
                                 }
-                                Switch(checked = item.available, enabled = item.id !in state.busy, onCheckedChange = { vm.toggleAvailability(item) })
+                                Switch(checked = item.available, enabled = !busy, onCheckedChange = { vm.toggleAvailability(item) })
                             }
-                            Row {
-                                TextButton(onClick = { vm.dismissMessage(); editing = item }) { Text("Edit") }
-                                TextButton(onClick = { deleting = item }, enabled = item.id !in state.busy) { Text("Delete") }
-                            }
+                            Spacer(Modifier.height(8.dp))
+                            StockControlRow(
+                                item = item,
+                                busy = busy,
+                                onUpdateStock = { vm.updateStockQuantity(item, it) },
+                                onEdit = { vm.dismissMessage(); editing = item },
+                                onDelete = { deleting = item },
+                            )
                         }
                     }
                 }
@@ -89,6 +103,8 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
     var name by remember { mutableStateOf(item?.name.orEmpty()) }
     var description by remember { mutableStateOf(item?.description.orEmpty()) }
     var price by remember { mutableStateOf(item?.price.orEmpty()) }
+    var quantityAvailableStr by remember { mutableStateOf(item?.quantityAvailable?.toString().orEmpty()) }
+    var trackInventory by remember(item?.id) { mutableStateOf(item?.quantityAvailable != null) }
     var available by remember { mutableStateOf(item?.available ?: true) }
     var categoryId by remember { mutableStateOf(item?.categoryId) }
     var newCategory by remember { mutableStateOf("") }
@@ -102,6 +118,23 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
                 price, { price = it }, label = { Text("Price (₹)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(trackInventory, {
+                    trackInventory = it
+                    if (!it) quantityAvailableStr = ""
+                    else if (quantityAvailableStr.isEmpty()) quantityAvailableStr = "20"
+                })
+                Spacer(Modifier.width(12.dp))
+                Text("Track inventory quantity")
+            }
+            if (trackInventory) {
+                OutlinedTextField(
+                    quantityAvailableStr, { quantityAvailableStr = it.filter { c -> c.isDigit() } },
+                    label = { Text("Stock quantity (e.g. 50)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
+                    supportingText = { Text("Owner can adjust quantity anytime using +, -, or direct input") },
+                )
+            }
             CategoryPicker(categories, categoryId) { categoryId = it }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(newCategory, { newCategory = it }, label = { Text("New category") }, singleLine = true, modifier = Modifier.weight(1f))
@@ -118,9 +151,109 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
             state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 enabled = !state.saving,
-                onClick = { vm.save(item?.id, name, description, price, categoryId, available, onClose) },
+                onClick = {
+                    val targetQty = if (trackInventory) quantityAvailableStr.trim().toIntOrNull() else null
+                    vm.save(item?.id, name, description, price, categoryId, available, targetQty, onClose)
+                },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text(if (state.saving) "Saving…" else "Save") }
+        }
+    }
+}
+
+@Composable
+private fun StockControlRow(
+    item: FoodItemDto,
+    busy: Boolean,
+    onUpdateStock: (Int?) -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val stock = item.quantityAvailable
+    var editingDirectly by remember(stock) { mutableStateOf(false) }
+    var inputText by remember(stock) { mutableStateOf(stock?.toString().orEmpty()) }
+
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            Text("Stock:", style = MaterialTheme.typography.labelMedium)
+
+            OutlinedButton(
+                onClick = { onUpdateStock(((stock ?: 1) - 1).coerceAtLeast(0)) },
+                enabled = !busy && stock != null && stock > 0,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            ) { Text("-", style = MaterialTheme.typography.titleMedium) }
+
+            if (editingDirectly) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it.filter { c -> c.isDigit() } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.width(64.dp),
+                    )
+                    TextButton(
+                        onClick = {
+                            val target = inputText.toIntOrNull()
+                            onUpdateStock(target)
+                            editingDirectly = false
+                        },
+                        enabled = !busy,
+                    ) { Text("✓", fontWeight = FontWeight.Bold) }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = {
+                        if (!busy) {
+                            inputText = stock?.toString().orEmpty()
+                            editingDirectly = true
+                        }
+                    },
+                    enabled = !busy,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = stock?.toString() ?: "∞",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            OutlinedButton(
+                onClick = { onUpdateStock((stock ?: 0) + 1) },
+                enabled = !busy,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            ) { Text("+", style = MaterialTheme.typography.titleMedium) }
+
+            if (stock != null) {
+                TextButton(onClick = { onUpdateStock(0) }, enabled = !busy) {
+                    Text("0", style = MaterialTheme.typography.labelSmall)
+                }
+                TextButton(onClick = { onUpdateStock(null) }, enabled = !busy) {
+                    Text("∞", style = MaterialTheme.typography.labelSmall)
+                }
+            } else {
+                TextButton(onClick = { onUpdateStock(20) }, enabled = !busy) {
+                    Text("+20", style = MaterialTheme.typography.labelSmall)
+                }
+                TextButton(onClick = { onUpdateStock(50) }, enabled = !busy) {
+                    Text("+50", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+
+        Row {
+            TextButton(onClick = onEdit) { Text("Edit") }
+            TextButton(onClick = onDelete, enabled = !busy) { Text("Delete") }
         }
     }
 }

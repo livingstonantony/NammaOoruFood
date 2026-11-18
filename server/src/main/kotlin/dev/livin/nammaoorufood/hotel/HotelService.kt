@@ -112,7 +112,7 @@ class HotelService(
         val isManager = p.role == Role.ADMIN || hotel.ownerId == p.userId
         MenuResponse(
             categories = hotels.categories(conn, hotelId).map { it.toDto() },
-            items = hotels.foodItems(conn, hotelId).filter { isManager || it.available }.map { it.toDto() },
+            items = hotels.foodItems(conn, hotelId).filter { isManager || (it.available && (it.quantityAvailable == null || it.quantityAvailable > 0)) }.map { it.toDto() },
         )
     }
 
@@ -131,29 +131,39 @@ class HotelService(
 
     fun createFoodItem(p: UserPrincipal, hotelId: Long, req: FoodItemRequest): FoodItemDto {
         val v = validateFood(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available).toDto()
+            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable).toDto()
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun updateFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long, req: FoodItemRequest): FoodItemDto {
         val v = validateFood(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available)) {
+            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable)) {
                 throw NotFoundException("Food item not found")
             }
             hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
-    fun setItemAvailability(p: UserPrincipal, hotelId: Long, itemId: Long, available: Boolean): FoodItemDto = db.transaction { conn ->
-        ownedHotel(conn, p, hotelId)
-        if (!hotels.setItemAvailability(conn, hotelId, itemId, available)) throw NotFoundException("Food item not found")
-        hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
+    fun setItemAvailability(p: UserPrincipal, hotelId: Long, itemId: Long, req: AvailabilityRequest): FoodItemDto {
+        val dto = db.transaction { conn ->
+            ownedHotel(conn, p, hotelId)
+            val qty = if (req.clearQuantity) null else req.quantityAvailable
+            val updateQty = req.clearQuantity || req.quantityAvailable != null
+            if (!hotels.setItemAvailability(conn, hotelId, itemId, req.available, qty, updateQty)) throw NotFoundException("Food item not found")
+            hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
+        }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) = db.transaction { conn ->

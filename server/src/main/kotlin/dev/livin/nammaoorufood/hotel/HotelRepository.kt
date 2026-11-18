@@ -34,9 +34,10 @@ interface HotelRepository {
     fun categoryBelongsToHotel(conn: Connection, categoryId: Long, hotelId: Long): Boolean
     fun foodItems(conn: Connection, hotelId: Long): List<FoodItem>
     fun findFoodItem(conn: Connection, hotelId: Long, itemId: Long): FoodItem?
-    fun createFoodItem(conn: Connection, hotelId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean): FoodItem
-    fun updateFoodItem(conn: Connection, hotelId: Long, itemId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean): Boolean
-    fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean): Boolean
+    fun createFoodItem(conn: Connection, hotelId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null): FoodItem
+    fun updateFoodItem(conn: Connection, hotelId: Long, itemId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null): Boolean
+    fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean? = null, quantityAvailable: Int? = null, updateQuantity: Boolean = false): Boolean
+    fun decrementStock(conn: Connection, hotelId: Long, itemId: Long, amount: Int): Boolean
     fun deleteFoodItem(conn: Connection, hotelId: Long, itemId: Long): Boolean
 }
 
@@ -155,6 +156,7 @@ class ExposedHotelRepository : HotelRepository {
         description: String?,
         price: BigDecimal,
         available: Boolean,
+        quantityAvailable: Int?,
     ): FoodItem {
         val id = FoodItemsTable.insert {
             it[FoodItemsTable.hotelId] = hotelId
@@ -163,8 +165,9 @@ class ExposedHotelRepository : HotelRepository {
             it[FoodItemsTable.description] = description
             it[FoodItemsTable.price] = price
             it[FoodItemsTable.available] = available
+            it[FoodItemsTable.quantityAvailable] = quantityAvailable
         }[FoodItemsTable.id]
-        return FoodItem(id, hotelId, categoryId, name, description, price, available)
+        return FoodItem(id, hotelId, categoryId, name, description, price, available, quantityAvailable)
     }
 
     override fun updateFoodItem(
@@ -176,6 +179,7 @@ class ExposedHotelRepository : HotelRepository {
         description: String?,
         price: BigDecimal,
         available: Boolean,
+        quantityAvailable: Int?,
     ): Boolean = FoodItemsTable.update({
         (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
     }) {
@@ -184,12 +188,41 @@ class ExposedHotelRepository : HotelRepository {
         it[FoodItemsTable.description] = description
         it[FoodItemsTable.price] = price
         it[FoodItemsTable.available] = available
+        it[FoodItemsTable.quantityAvailable] = quantityAvailable
     } == 1
 
-    override fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean): Boolean =
+    override fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean?, quantityAvailable: Int?, updateQuantity: Boolean): Boolean =
         FoodItemsTable.update({
             (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
-        }) { it[FoodItemsTable.available] = available } == 1
+        }) { row ->
+            if (available != null) row[FoodItemsTable.available] = available
+            if (updateQuantity) {
+                row[FoodItemsTable.quantityAvailable] = quantityAvailable
+                if (quantityAvailable != null && quantityAvailable > 0 && available == null) {
+                    row[FoodItemsTable.available] = true
+                }
+            } else if (quantityAvailable != null) {
+                row[FoodItemsTable.quantityAvailable] = quantityAvailable
+                if (quantityAvailable > 0 && available == null) {
+                    row[FoodItemsTable.available] = true
+                }
+            }
+        } == 1
+
+    override fun decrementStock(conn: Connection, hotelId: Long, itemId: Long, amount: Int): Boolean {
+        val item = findFoodItem(conn, hotelId, itemId) ?: return false
+        val current = item.quantityAvailable ?: return true // Unlimited stock
+        val updated = (current - amount).coerceAtLeast(0)
+        val isNowAvailable = updated > 0
+        return FoodItemsTable.update({
+            (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
+        }) {
+            it[FoodItemsTable.quantityAvailable] = updated
+            if (!isNowAvailable) {
+                it[FoodItemsTable.available] = false
+            }
+        } == 1
+    }
 
     override fun deleteFoodItem(conn: Connection, hotelId: Long, itemId: Long): Boolean =
         FoodItemsTable.deleteWhere {
@@ -215,5 +248,6 @@ class ExposedHotelRepository : HotelRepository {
         this[FoodItemsTable.description],
         this[FoodItemsTable.price],
         this[FoodItemsTable.available],
+        this[FoodItemsTable.quantityAvailable],
     )
 }

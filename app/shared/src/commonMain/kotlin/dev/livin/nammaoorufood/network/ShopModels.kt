@@ -38,6 +38,8 @@ data class FoodItemDto(
     val description: String? = null,
     val price: String,
     val available: Boolean,
+    val quantityAvailable: Int? = null,
+    val trackInventory: Boolean = quantityAvailable != null,
 )
 
 @Serializable

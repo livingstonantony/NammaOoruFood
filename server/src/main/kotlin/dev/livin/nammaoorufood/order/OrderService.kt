@@ -54,10 +54,19 @@ class OrderService(
                     val item = hotels.findFoodItem(conn, hotel.id, itemId)
                         ?: throw ValidationException("Item $itemId does not belong to this hotel")
                     if (!item.available) throw ConflictException("'${item.name}' is currently unavailable")
+                    val stock = item.quantityAvailable
+                    if (stock != null) {
+                        if (stock <= 0) throw ConflictException("'${item.name}' is out of stock")
+                        if (qty > stock) throw ConflictException("Only $stock left for '${item.name}'")
+                    }
                     NewOrderItem(item.id, item.name, item.price, qty)
                 }
                 val total = lines.fold(BigDecimal.ZERO) { acc, l -> acc + l.lineTotal }
                 val id = orders.create(conn, p.userId, hotel.id, total, note, idempotencyKey, lines)
+                quantities.forEach { (itemId, qty) ->
+                    hotels.decrementStock(conn, hotel.id, itemId, qty)
+                }
+                ServerEventBus.broadcast("MENU_UPDATED", hotel.id)
                 val dto = orders.findById(conn, id)!!.toDto()
                 ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
                 dto to true

@@ -9,6 +9,7 @@ import dev.livin.nammaoorufood.hotel.*
 import dev.livin.nammaoorufood.order.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -47,6 +48,10 @@ class AdminTest {
             this.method = method
             bearerAuth(token)
             if (body != null) { contentType(ContentType.Application.Json); setBody(body) }
+        }.also { resp ->
+            if (!resp.status.isSuccess()) {
+                println("TEST HTTP ERROR ${resp.status}: ${resp.bodyAsText()}")
+            }
         }
 
     private suspend fun HttpClient.token(user: String, pw: String) =
@@ -54,7 +59,7 @@ class AdminTest {
 
     private suspend fun ApplicationTestBuilder.fixture(): Fx {
         application { module(config()) }
-        val c = createClient { install(ContentNegotiation) { json() } }
+        val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")
         val customer = c.token("customer", "customer12345")

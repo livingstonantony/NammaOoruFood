@@ -224,7 +224,25 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
         if (item.id in _state.value.busy) return
         _state.update { it.copy(busy = it.busy + item.id, message = null) }
         viewModelScope.launch {
-            val r = repo.setItemAvailability(hotelId, item.id, !item.available)
+            val r = repo.setItemAvailability(hotelId, item.id, available = !item.available)
+            _state.update { s ->
+                val menu = (s.menu as? Load.Success)?.data
+                s.copy(
+                    busy = s.busy - item.id,
+                    menu = if (r is ApiResult.Success && menu != null) Load.Success(menu.copy(items = menu.items.map { if (it.id == item.id) r.value else it })) else s.menu,
+                    message = if (r is ApiResult.Success) null else r.errorMessage(),
+                )
+            }
+        }
+    }
+
+    fun updateStockQuantity(item: FoodItemDto, newQuantity: Int?) {
+        if (item.id in _state.value.busy) return
+        val target = newQuantity?.coerceAtLeast(0)
+        val available = if (target != null) target > 0 else item.available
+        _state.update { it.copy(busy = it.busy + item.id, message = null) }
+        viewModelScope.launch {
+            val r = repo.setItemAvailability(hotelId, item.id, available = available, quantityAvailable = target)
             _state.update { s ->
                 val menu = (s.menu as? Load.Success)?.data
                 s.copy(
@@ -237,10 +255,10 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
     }
 
     /** [itemId] null creates a new item. [onSaved] runs only on success so the editor can close. */
-    fun save(itemId: Long?, name: String, description: String, price: String, categoryId: Long?, available: Boolean, onSaved: () -> Unit) {
+    fun save(itemId: Long?, name: String, description: String, price: String, categoryId: Long?, available: Boolean, quantityAvailable: Int?, onSaved: () -> Unit) {
         if (_state.value.saving) return
         (validateItemName(name) ?: validatePrice(price))?.let { return _state.update { s -> s.copy(message = it) } }
-        val request = FoodItemRequest(name.trim(), description.trim().ifEmpty { null }, price.trim(), categoryId, available)
+        val request = FoodItemRequest(name.trim(), description.trim().ifEmpty { null }, price.trim(), categoryId, available, quantityAvailable)
         _state.update { it.copy(saving = true, message = null) }
         viewModelScope.launch {
             val r = if (itemId == null) repo.createItem(hotelId, request) else repo.updateItem(hotelId, itemId, request)

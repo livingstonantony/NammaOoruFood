@@ -130,6 +130,7 @@ object FoodItemsTable : Table("food_items") {
     val description = varchar("description", 500).nullable()
     val price = decimal("price", 10, 2)
     val available = bool("available")
+    val quantityAvailable = integer("quantity_available").nullable()
     val createdAt = utcDateTime("created_at")
     val updatedAt = utcDateTime("updated_at")
 

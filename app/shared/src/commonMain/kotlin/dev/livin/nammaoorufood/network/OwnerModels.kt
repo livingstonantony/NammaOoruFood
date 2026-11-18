@@ -23,7 +23,11 @@ data class OperatingHoursRequest(val hours: List<OperatingHourDto>)
 data class AcceptingOrdersRequest(val acceptingOrders: Boolean)
 
 @Serializable
-data class AvailabilityRequest(val available: Boolean)
+data class AvailabilityRequest(
+    val available: Boolean? = null,
+    val quantityAvailable: Int? = null,
+    val clearQuantity: Boolean = false,
+)
 
 @Serializable
 data class CategoryRequest(val name: String, val sortOrder: Int = 0)
@@ -35,6 +39,8 @@ data class FoodItemRequest(
     val price: String,
     val categoryId: Long? = null,
     val available: Boolean = true,
+    val quantityAvailable: Int? = null,
+    val trackInventory: Boolean = false,
 )
 
 @Serializable

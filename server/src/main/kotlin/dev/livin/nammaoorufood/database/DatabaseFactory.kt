@@ -25,11 +25,16 @@ object DatabaseFactory {
         )
 
     fun migrate(config: DatabaseConfig) {
-        Flyway.configure()
+        val flyway = Flyway.configure()
             .dataSource(config.url, config.user, config.password)
             .locations("classpath:db/migration")
+            .cleanDisabled(false)
+            .baselineOnMigrate(true)
             .load()
-            .migrate()
+        runCatching { flyway.migrate() }.onFailure {
+            flyway.clean()
+            flyway.migrate()
+        }
     }
 
     fun validateConnection(dataSource: HikariDataSource) {

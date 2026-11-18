@@ -55,7 +55,7 @@ class OrderApiTest {
 
     private suspend fun ApplicationTestBuilder.fixture(open: Boolean = true): Fixture {
         application { module(config()) }
-        val c = createClient { install(ContentNegotiation) { json() } }
+        val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")
         val customer = c.token("customer", "customer12345")
