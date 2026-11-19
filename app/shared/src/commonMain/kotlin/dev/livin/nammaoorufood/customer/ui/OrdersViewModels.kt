@@ -16,14 +16,24 @@ import kotlinx.coroutines.launch
 
 data class OrdersState(val active: List<OrderDto> = emptyList(), val past: List<OrderDto> = emptyList(), val load: Load<Unit> = Load.Loading)
 
+sealed interface OrdersIntent {
+    data object Refresh : OrdersIntent
+}
+
 class OrdersViewModel(private val repo: ShopRepository) : ViewModel() {
     private val _state = MutableStateFlow(OrdersState())
     val state: StateFlow<OrdersState> = _state.asStateFlow()
 
     init { refresh() }
 
+    fun onIntent(intent: OrdersIntent) {
+        when (intent) {
+            OrdersIntent.Refresh -> refresh()
+        }
+    }
+
     /** Silent when data is already on screen so periodic refreshes do not flicker. */
-    fun refresh() {
+    private fun refresh() {
         viewModelScope.launch {
             val active = repo.activeOrders()
             val history = repo.orderHistory()
@@ -45,13 +55,25 @@ class OrdersViewModel(private val repo: ShopRepository) : ViewModel() {
 
 data class OrderDetailState(val order: Load<OrderDto> = Load.Loading, val cancelling: Boolean = false, val actionError: String? = null)
 
+sealed interface OrderDetailIntent {
+    data object Refresh : OrderDetailIntent
+    data object Cancel : OrderDetailIntent
+}
+
 class OrderDetailViewModel(private val orderId: Long, private val repo: ShopRepository) : ViewModel() {
     private val _state = MutableStateFlow(OrderDetailState())
     val state: StateFlow<OrderDetailState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun refresh() {
+    fun onIntent(intent: OrderDetailIntent) {
+        when (intent) {
+            OrderDetailIntent.Refresh -> refresh()
+            OrderDetailIntent.Cancel -> cancel()
+        }
+    }
+
+    private fun refresh() {
         viewModelScope.launch {
             when (val result = repo.order(orderId)) {
                 is ApiResult.Success -> _state.update { it.copy(order = Load.Success(result.value)) }
@@ -60,7 +82,7 @@ class OrderDetailViewModel(private val orderId: Long, private val repo: ShopRepo
         }
     }
 
-    fun cancel() {
+    private fun cancel() {
         if (_state.value.cancelling) return
         _state.update { it.copy(cancelling = true, actionError = null) }
         viewModelScope.launch {
@@ -77,19 +99,31 @@ class OrderDetailViewModel(private val orderId: Long, private val repo: ShopRepo
 
 data class NotificationsState(val unread: List<NotificationDto> = emptyList())
 
+sealed interface NotificationsIntent {
+    data object Refresh : NotificationsIntent
+    data class Dismiss(val id: Long) : NotificationsIntent
+}
+
 /** Polls unread notifications; the backend remains the source of truth for order status. */
 class NotificationsViewModel(private val repo: ShopRepository) : ViewModel() {
     private val _state = MutableStateFlow(NotificationsState())
     val state: StateFlow<NotificationsState> = _state.asStateFlow()
 
-    fun refresh() {
+    fun onIntent(intent: NotificationsIntent) {
+        when (intent) {
+            NotificationsIntent.Refresh -> refresh()
+            is NotificationsIntent.Dismiss -> dismiss(intent.id)
+        }
+    }
+
+    private fun refresh() {
         viewModelScope.launch {
             val result = repo.unreadNotifications()
             if (result is ApiResult.Success) _state.value = NotificationsState(result.value.items)
         }
     }
 
-    fun dismiss(id: Long) {
+    private fun dismiss(id: Long) {
         _state.update { s -> s.copy(unread = s.unread.filterNot { it.id == id }) }
         viewModelScope.launch { repo.markNotificationRead(id) }
     }

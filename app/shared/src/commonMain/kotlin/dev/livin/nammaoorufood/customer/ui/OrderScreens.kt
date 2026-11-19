@@ -79,13 +79,13 @@ fun OrdersScreen(vm: OrdersViewModel, onOpenOrder: (Long) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val hasActive = state.active.isNotEmpty()
     LaunchedEffect(hasActive) {
-        if (hasActive) while (true) { delay(POLL_MILLIS); vm.refresh() }
+        if (hasActive) while (true) { delay(POLL_MILLIS); vm.onIntent(OrdersIntent.Refresh) }
     }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("My orders")
         when (val load = state.load) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(load.message) { vm.refresh() }
+            is Load.Error -> ErrorState(load.message) { vm.onIntent(OrdersIntent.Refresh) }
             is Load.Success ->
                 if (state.active.isEmpty() && state.past.isEmpty()) EmptyState("You haven't placed any orders yet.")
                 else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -120,14 +120,14 @@ fun OrderDetailScreen(vm: OrderDetailViewModel, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val terminal = (state.order as? Load.Success)?.data?.status?.isTerminal == true
     LaunchedEffect(terminal) {
-        if (!terminal) while (true) { delay(POLL_MILLIS); vm.refresh() }
+        if (!terminal) while (true) { delay(POLL_MILLIS); vm.onIntent(OrderDetailIntent.Refresh) }
     }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("Order details", onBack)
         when (val load = state.order) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(load.message) { vm.refresh() }
-            is Load.Success -> OrderDetailContent(load.data, state.cancelling, state.actionError, vm::cancel)
+            is Load.Error -> ErrorState(load.message) { vm.onIntent(OrderDetailIntent.Refresh) }
+            is Load.Success -> OrderDetailContent(load.data, state.cancelling, state.actionError) { vm.onIntent(OrderDetailIntent.Cancel) }
         }
     }
 }

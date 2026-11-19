@@ -32,20 +32,34 @@ fun validateDateRange(from: String, to: String): String? = when {
     else -> null
 }
 
+sealed interface AdminOverviewIntent {
+    data class SetRange(val from: String, val to: String) : AdminOverviewIntent
+    data object ApplyRange : AdminOverviewIntent
+    data class Refresh(val replace: Boolean = false) : AdminOverviewIntent
+}
+
 class AdminOverviewViewModel(private val repo: AdminRepository) : ViewModel() {
     private val _state = MutableStateFlow(OverviewState())
     val state: StateFlow<OverviewState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun setRange(from: String, to: String) = _state.update { it.copy(from = from, to = to, rangeError = null) }
+    fun onIntent(intent: AdminOverviewIntent) {
+        when (intent) {
+            is AdminOverviewIntent.SetRange -> setRange(intent.from, intent.to)
+            AdminOverviewIntent.ApplyRange -> applyRange()
+            is AdminOverviewIntent.Refresh -> refresh(intent.replace)
+        }
+    }
 
-    fun applyRange() {
+    private fun setRange(from: String, to: String) = _state.update { it.copy(from = from, to = to, rangeError = null) }
+
+    private fun applyRange() {
         validateDateRange(_state.value.from, _state.value.to)?.let { e -> return _state.update { it.copy(rangeError = e) } }
         refresh(replace = true)
     }
 
-    fun refresh(replace: Boolean = false) {
+    private fun refresh(replace: Boolean = false) {
         val (from, to) = _state.value.let { it.from.trim().ifEmpty { null } to it.to.trim().ifEmpty { null } }
         viewModelScope.launch {
             val o = repo.overview(from, to)
@@ -67,18 +81,32 @@ data class AdminHotelsState(
     val message: String? = null,
 )
 
+sealed interface AdminHotelsIntent {
+    data class SetQuery(val query: String) : AdminHotelsIntent
+    data object Refresh : AdminHotelsIntent
+    data class SetApproval(val hotelId: Long, val status: String) : AdminHotelsIntent
+}
+
 class AdminHotelsViewModel(private val repo: AdminRepository) : ViewModel() {
     private val _state = MutableStateFlow(AdminHotelsState())
     val state: StateFlow<AdminHotelsState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun setQuery(q: String) {
+    fun onIntent(intent: AdminHotelsIntent) {
+        when (intent) {
+            is AdminHotelsIntent.SetQuery -> setQuery(intent.query)
+            AdminHotelsIntent.Refresh -> refresh()
+            is AdminHotelsIntent.SetApproval -> setApproval(intent.hotelId, intent.status)
+        }
+    }
+
+    private fun setQuery(q: String) {
         _state.update { it.copy(query = q) }
         refresh()
     }
 
-    fun refresh() {
+    private fun refresh() {
         val requested = _state.value.query
         viewModelScope.launch {
             val r = repo.hotels(requested)
@@ -92,7 +120,7 @@ class AdminHotelsViewModel(private val repo: AdminRepository) : ViewModel() {
         }
     }
 
-    fun setApproval(hotelId: Long, status: String) {
+    private fun setApproval(hotelId: Long, status: String) {
         if (hotelId in _state.value.busy) return
         _state.update { it.copy(busy = it.busy + hotelId, message = null) }
         viewModelScope.launch {
@@ -117,24 +145,40 @@ data class AdminCustomersState(
     val message: String? = null,
 )
 
+sealed interface AdminCustomersIntent {
+    data class SetQuery(val query: String) : AdminCustomersIntent
+    data class GoToPage(val page: Int) : AdminCustomersIntent
+    data object Refresh : AdminCustomersIntent
+    data class SetActive(val id: Long, val active: Boolean) : AdminCustomersIntent
+}
+
 class AdminCustomersViewModel(private val repo: AdminRepository) : ViewModel() {
     private val _state = MutableStateFlow(AdminCustomersState())
     val state: StateFlow<AdminCustomersState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun setQuery(q: String) {
+    fun onIntent(intent: AdminCustomersIntent) {
+        when (intent) {
+            is AdminCustomersIntent.SetQuery -> setQuery(intent.query)
+            is AdminCustomersIntent.GoToPage -> goToPage(intent.page)
+            AdminCustomersIntent.Refresh -> refresh()
+            is AdminCustomersIntent.SetActive -> setActive(intent.id, intent.active)
+        }
+    }
+
+    private fun setQuery(q: String) {
         _state.update { it.copy(query = q, pageNumber = 1, page = Load.Loading) }
         refresh()
     }
 
-    fun goToPage(n: Int) {
+    private fun goToPage(n: Int) {
         if (n < 1) return
         _state.update { it.copy(pageNumber = n, page = Load.Loading) }
         refresh()
     }
 
-    fun refresh() {
+    private fun refresh() {
         val (q, n) = _state.value.let { it.query to it.pageNumber }
         viewModelScope.launch {
             val r = repo.customers(q, n)
@@ -148,7 +192,7 @@ class AdminCustomersViewModel(private val repo: AdminRepository) : ViewModel() {
         }
     }
 
-    fun setActive(id: Long, active: Boolean) {
+    private fun setActive(id: Long, active: Boolean) {
         if (id in _state.value.busy) return
         _state.update { it.copy(busy = it.busy + id, message = null) }
         viewModelScope.launch {
@@ -171,24 +215,38 @@ data class AdminOrdersState(
     val pageNumber: Int = 1,
 )
 
+sealed interface AdminOrdersIntent {
+    data class SetStatus(val status: OrderStatus?) : AdminOrdersIntent
+    data class GoToPage(val page: Int) : AdminOrdersIntent
+    data object Refresh : AdminOrdersIntent
+}
+
 class AdminOrdersViewModel(private val repo: AdminRepository) : ViewModel() {
     private val _state = MutableStateFlow(AdminOrdersState())
     val state: StateFlow<AdminOrdersState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun setStatus(status: OrderStatus?) {
+    fun onIntent(intent: AdminOrdersIntent) {
+        when (intent) {
+            is AdminOrdersIntent.SetStatus -> setStatus(intent.status)
+            is AdminOrdersIntent.GoToPage -> goToPage(intent.page)
+            AdminOrdersIntent.Refresh -> refresh()
+        }
+    }
+
+    private fun setStatus(status: OrderStatus?) {
         _state.update { it.copy(status = status, pageNumber = 1, page = Load.Loading) }
         refresh()
     }
 
-    fun goToPage(n: Int) {
+    private fun goToPage(n: Int) {
         if (n < 1) return
         _state.update { it.copy(pageNumber = n, page = Load.Loading) }
         refresh()
     }
 
-    fun refresh() {
+    private fun refresh() {
         val (st, n) = _state.value.let { it.status to it.pageNumber }
         viewModelScope.launch {
             val r = repo.orders(st, null, n)

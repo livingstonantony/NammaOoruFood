@@ -28,7 +28,7 @@ fun OwnerApp(user: UserDto, session: SessionManager) {
     val state by hotelVm.state.collectAsStateWithLifecycle()
     when (val h = state.hotels) {
         Load.Loading -> CenteredLoading()
-        is Load.Error -> ErrorState(h.message, hotelVm::refresh)
+        is Load.Error -> ErrorState(h.message) { hotelVm.onIntent(OwnerHotelIntent.Refresh) }
         is Load.Success -> {
             val hotel = state.hotel
             if (hotel == null) {

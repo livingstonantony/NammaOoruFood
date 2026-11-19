@@ -21,12 +21,12 @@ private const val POLL_MS = 5_000L
 @Composable
 fun DashboardScreen(vm: OwnerDashboardViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
-    LaunchedEffect(vm) { while (true) { delay(POLL_MS); vm.refresh() } }
+    LaunchedEffect(vm) { while (true) { delay(POLL_MS); vm.onIntent(OwnerDashboardIntent.Refresh) } }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle("Dashboard")
         when (val d = state.dashboard) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(d.message, vm::refresh)
+            is Load.Error -> ErrorState(d.message) { vm.onIntent(OwnerDashboardIntent.Refresh) }
             is Load.Success -> DashboardContent(d.data)
         }
     }

@@ -49,15 +49,15 @@ class AdminViewModelsTest {
     @Test fun dateRangeIsValidatedThenSentToServer() = runTest {
         val vm = AdminOverviewViewModel(repo)
         repo.ranges.clear()
-        vm.setRange("2026-10-05", "2026-10-01")
-        vm.applyRange()
+        vm.onIntent(AdminOverviewIntent.SetRange("2026-10-05", "2026-10-01"))
+        vm.onIntent(AdminOverviewIntent.ApplyRange)
         assertNotNull(vm.state.value.rangeError)
         assertTrue(repo.ranges.isEmpty())
-        vm.setRange("10/05", "")
-        vm.applyRange()
+        vm.onIntent(AdminOverviewIntent.SetRange("10/05", ""))
+        vm.onIntent(AdminOverviewIntent.ApplyRange)
         assertNotNull(vm.state.value.rangeError)
-        vm.setRange("2026-10-01", "2026-10-05")
-        vm.applyRange()
+        vm.onIntent(AdminOverviewIntent.SetRange("2026-10-01", "2026-10-05"))
+        vm.onIntent(AdminOverviewIntent.ApplyRange)
         assertNull(vm.state.value.rangeError)
         assertEquals(listOf<Pair<String?, String?>>("2026-10-01" to "2026-10-05"), repo.ranges)
     }
@@ -69,7 +69,7 @@ class AdminViewModelsTest {
 
     @Test fun approvalUpdatesHotelInPlace() = runTest {
         val vm = AdminHotelsViewModel(repo)
-        vm.setApproval(1, "APPROVED")
+        vm.onIntent(AdminHotelsIntent.SetApproval(1, "APPROVED"))
         assertEquals("APPROVED", (vm.state.value.hotels as Load.Success).data.single().approvalStatus)
         assertTrue(vm.state.value.busy.isEmpty())
     }
@@ -77,24 +77,24 @@ class AdminViewModelsTest {
     @Test fun failedApprovalShowsMessageAndKeepsHotel() = runTest {
         repo.approval = ApiResult.Rejected(409, "Not allowed", false)
         val vm = AdminHotelsViewModel(repo)
-        vm.setApproval(1, "APPROVED")
+        vm.onIntent(AdminHotelsIntent.SetApproval(1, "APPROVED"))
         assertEquals("Not allowed", vm.state.value.message)
         assertEquals("PENDING", (vm.state.value.hotels as Load.Success).data.single().approvalStatus)
     }
 
     @Test fun customerPagingAndSearchResetPage() = runTest {
         val vm = AdminCustomersViewModel(repo)
-        vm.goToPage(2)
+        vm.onIntent(AdminCustomersIntent.GoToPage(2))
         assertEquals("" to 2, repo.customerCalls.last())
-        vm.setQuery("ann")
+        vm.onIntent(AdminCustomersIntent.SetQuery("ann"))
         assertEquals("ann" to 1, repo.customerCalls.last())
-        vm.goToPage(0)
+        vm.onIntent(AdminCustomersIntent.GoToPage(0))
         assertEquals(1, vm.state.value.pageNumber)
     }
 
     @Test fun deactivateUpdatesRow() = runTest {
         val vm = AdminCustomersViewModel(repo)
-        vm.setActive(1, false)
+        vm.onIntent(AdminCustomersIntent.SetActive(1, false))
         val items = (vm.state.value.page as Load.Success).data.items
         assertFalse(items.first { it.id == 1L }.active)
         assertTrue(items.first { it.id == 2L }.active)
@@ -102,8 +102,8 @@ class AdminViewModelsTest {
 
     @Test fun ordersFilterResetsPage() = runTest {
         val vm = AdminOrdersViewModel(repo)
-        vm.goToPage(2)
-        vm.setStatus(OrderStatus.READY_FOR_PICKUP)
+        vm.onIntent(AdminOrdersIntent.GoToPage(2))
+        vm.onIntent(AdminOrdersIntent.SetStatus(OrderStatus.READY_FOR_PICKUP))
         assertEquals(OrderStatus.READY_FOR_PICKUP to 1, repo.orderCalls.last())
     }
 

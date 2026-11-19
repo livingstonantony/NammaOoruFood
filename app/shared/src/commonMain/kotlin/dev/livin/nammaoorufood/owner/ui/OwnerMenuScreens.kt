@@ -36,12 +36,12 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             ScreenTitle("Menu", modifier = Modifier.weight(1f))
-            Button(onClick = { vm.dismissMessage(); creating = true }, modifier = Modifier.padding(end = 12.dp).height(48.dp)) { Text("+ Add item") }
+            Button(onClick = { vm.onIntent(OwnerMenuIntent.DismissMessage); creating = true }, modifier = Modifier.padding(end = 12.dp).height(48.dp)) { Text("+ Add item") }
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp)) }
         when (val m = state.menu) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(m.message, vm::refresh)
+            is Load.Error -> ErrorState(m.message) { vm.onIntent(OwnerMenuIntent.Refresh) }
             is Load.Success ->
                 if (m.data.items.isEmpty()) {
                     Column(
@@ -51,7 +51,7 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                     ) {
                         Text("No items yet. Add your first dish.", style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { vm.dismissMessage(); creating = true }) { Text("+ Add item") }
+                        Button(onClick = { vm.onIntent(OwnerMenuIntent.DismissMessage); creating = true }) { Text("+ Add item") }
                     }
                 } else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(m.data.items, key = { it.id }) { item ->
@@ -72,14 +72,14 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                                         style = MaterialTheme.typography.labelLarge,
                                     )
                                 }
-                                Switch(checked = item.available, enabled = !busy, onCheckedChange = { vm.toggleAvailability(item) })
+                                Switch(checked = item.available, enabled = !busy, onCheckedChange = { vm.onIntent(OwnerMenuIntent.ToggleAvailability(item)) })
                             }
                             Spacer(Modifier.height(8.dp))
                             StockControlRow(
                                 item = item,
                                 busy = busy,
-                                onUpdateStock = { vm.updateStockQuantity(item, it) },
-                                onEdit = { vm.dismissMessage(); editing = item },
+                                onUpdateStock = { vm.onIntent(OwnerMenuIntent.UpdateStockQuantity(item, it)) },
+                                onEdit = { vm.onIntent(OwnerMenuIntent.DismissMessage); editing = item },
                                 onDelete = { deleting = item },
                             )
                         }
@@ -92,7 +92,7 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
             onDismissRequest = { deleting = null },
             title = { Text("Delete ${item.name}?") },
             text = { Text("Past orders keep their original item names and prices.") },
-            confirmButton = { TextButton(onClick = { vm.delete(item.id); deleting = null }) { Text("Delete") } },
+            confirmButton = { TextButton(onClick = { vm.onIntent(OwnerMenuIntent.Delete(item.id)); deleting = null }) { Text("Delete") } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
         )
     }
@@ -140,7 +140,7 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
                 OutlinedTextField(newCategory, { newCategory = it }, label = { Text("New category") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedButton(
                     enabled = !state.saving,
-                    onClick = { vm.addCategory(newCategory) { id -> categoryId = id; newCategory = "" } },
+                    onClick = { vm.onIntent(OwnerMenuIntent.AddCategory(newCategory) { id -> categoryId = id; newCategory = "" }) },
                 ) { Text("Add") }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -153,7 +153,7 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
                 enabled = !state.saving,
                 onClick = {
                     val targetQty = if (trackInventory) quantityAvailableStr.trim().toIntOrNull() else null
-                    vm.save(item?.id, name, description, price, categoryId, available, targetQty, onClose)
+                    vm.onIntent(OwnerMenuIntent.Save(item?.id, name, description, price, categoryId, available, targetQty, onClose))
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text(if (state.saving) "Saving…" else "Save") }
@@ -286,7 +286,7 @@ fun HotelFormScreen(
                             Text("Accepting orders", style = MaterialTheme.typography.titleMedium)
                             Text(if (hotel.isOpen) "Open now" else "Not open to customers right now", style = MaterialTheme.typography.bodyMedium)
                         }
-                        Switch(hotel.acceptingOrders, { vm.setAccepting(hotel.id, it) }, enabled = !saving)
+                        Switch(hotel.acceptingOrders, { vm.onIntent(OwnerHotelIntent.SetAccepting(hotel.id, it)) }, enabled = !saving)
                     }
                 }
             }
@@ -297,7 +297,10 @@ fun HotelFormScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
             Button(
                 enabled = !saving,
-                onClick = { if (hotel == null) vm.createHotel(name, description, address, phone) else vm.updateHotel(hotel.id, name, description, address, phone) },
+                onClick = {
+                    if (hotel == null) vm.onIntent(OwnerHotelIntent.CreateHotel(name, description, address, phone))
+                    else vm.onIntent(OwnerHotelIntent.UpdateHotel(hotel.id, name, description, address, phone))
+                },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text(if (saving) "Saving…" else if (hotel == null) "Create hotel" else "Save details") }
 
@@ -313,7 +316,7 @@ fun HotelFormScreen(
                             label = { Text("Closes") }, singleLine = true, modifier = Modifier.weight(1f))
                     }
                 }
-                Button(enabled = !saving, onClick = { vm.setHours(hotel.id, rows) }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Save hours") }
+                Button(enabled = !saving, onClick = { vm.onIntent(OwnerHotelIntent.SetHours(hotel.id, rows)) }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Save hours") }
             }
             message?.let {
                 Text(it, color = if (it == "Saved") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)

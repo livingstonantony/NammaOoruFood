@@ -57,11 +57,11 @@ class OwnerViewModelsTest {
 
     @Test fun addCategoryValidatesThenCreatesAndReportsId() = runTest {
         val vm = OwnerMenuViewModel(1, repo)
-        vm.addCategory("  ")
+        vm.onIntent(OwnerMenuIntent.AddCategory("  "))
         assertTrue(repo.categories.isEmpty())
         assertNotNull(vm.state.value.message)
         var id: Long? = null
-        vm.addCategory(" Rice ") { id = it }
+        vm.onIntent(OwnerMenuIntent.AddCategory(" Rice ") { id = it })
         assertEquals(listOf("Rice"), repo.categories)
         assertEquals(7L, id)
     }
@@ -99,25 +99,25 @@ class OwnerViewModelsTest {
         repo.hotels = ApiResult.Success(emptyList())
         val vm = OwnerHotelViewModel(repo)
         assertNull(vm.state.value.hotel)
-        vm.createHotel("", "", "addr", "")
+        vm.onIntent(OwnerHotelIntent.CreateHotel("", "", "addr", ""))
         assertTrue(repo.calls.isEmpty())
         assertNotNull(vm.state.value.message)
-        vm.createHotel("Amma", "", "Main St", "")
+        vm.onIntent(OwnerHotelIntent.CreateHotel("Amma", "", "Main St", ""))
         assertEquals(listOf("create"), repo.calls)
         assertEquals(7, vm.state.value.hotel?.id)
     }
 
     @Test fun acceptingSwitchUpdatesHotel() = runTest {
         val vm = OwnerHotelViewModel(repo)
-        vm.setAccepting(1, false)
+        vm.onIntent(OwnerHotelIntent.SetAccepting(1, false))
         assertFalse(vm.state.value.hotel!!.acceptingOrders)
     }
 
     @Test fun invalidHoursAreNotSent() = runTest {
         val vm = OwnerHotelViewModel(repo)
-        vm.setHours(1, listOf(HoursRow(1, "18:00", "")))
+        vm.onIntent(OwnerHotelIntent.SetHours(1, listOf(HoursRow(1, "18:00", ""))))
         assertNull(repo.hoursSent)
-        vm.setHours(1, listOf(HoursRow(1, "18:00", "23:00")))
+        vm.onIntent(OwnerHotelIntent.SetHours(1, listOf(HoursRow(1, "18:00", "23:00"))))
         assertEquals(1, repo.hoursSent?.size)
     }
 
@@ -160,7 +160,7 @@ class OwnerViewModelsTest {
 
     @Test fun menuToggleUpdatesItemInPlace() = runTest {
         val vm = OwnerMenuViewModel(1, repo)
-        vm.toggleAvailability(food(1))
+        vm.onIntent(OwnerMenuIntent.ToggleAvailability(food(1)))
         val items = (vm.state.value.menu as Load.Success).data.items
         assertFalse(items.first { it.id == 1L }.available)
         assertTrue(items.first { it.id == 2L }.available)
@@ -168,24 +168,24 @@ class OwnerViewModelsTest {
 
     @Test fun updateStockQuantityUpdatesStockAndAvailability() = runTest {
         val vm = OwnerMenuViewModel(1, repo)
-        vm.updateStockQuantity(food(1), 10)
+        vm.onIntent(OwnerMenuIntent.UpdateStockQuantity(food(1), 10))
         assertEquals("avail1=true,10", repo.calls.last())
-        vm.updateStockQuantity(food(1), 0)
+        vm.onIntent(OwnerMenuIntent.UpdateStockQuantity(food(1), 0))
         assertEquals("avail1=false,0", repo.calls.last())
-        vm.updateStockQuantity(food(1), null)
+        vm.onIntent(OwnerMenuIntent.UpdateStockQuantity(food(1), null))
         assertEquals("avail1=true,null", repo.calls.last())
     }
 
     @Test fun menuSaveValidatesThenCallsAndCloses() = runTest {
         val vm = OwnerMenuViewModel(1, repo)
         var closed = 0
-        vm.save(null, "Parotta", "", "abc", null, true, null) { closed++ }
+        vm.onIntent(OwnerMenuIntent.Save(null, "Parotta", "", "abc", null, true, null) { closed++ })
         assertTrue(repo.calls.isEmpty())
         assertEquals(0, closed)
-        vm.save(null, "Parotta", "", "12.50", null, true, 50) { closed++ }
+        vm.onIntent(OwnerMenuIntent.Save(null, "Parotta", "", "12.50", null, true, 50) { closed++ })
         assertEquals(listOf("createItem"), repo.calls)
         assertEquals(1, closed)
-        vm.save(1, "Parotta", "", "12.50", null, true, 50) { closed++ }
+        vm.onIntent(OwnerMenuIntent.Save(1, "Parotta", "", "12.50", null, true, 50) { closed++ })
         assertEquals("updateItem", repo.calls.last())
     }
 
@@ -193,7 +193,7 @@ class OwnerViewModelsTest {
         repo.itemResult = ApiResult.Rejected(400, "Bad", false)
         val vm = OwnerMenuViewModel(1, repo)
         var closed = 0
-        vm.save(null, "Parotta", "", "12", null, true, null) { closed++ }
+        vm.onIntent(OwnerMenuIntent.Save(null, "Parotta", "", "12", null, true, null) { closed++ })
         assertEquals(0, closed)
         assertEquals("Bad", vm.state.value.message)
         assertFalse(vm.state.value.saving)
@@ -201,6 +201,7 @@ class OwnerViewModelsTest {
 
     @Test fun dashboardLoads() = runTest {
         val vm = OwnerDashboardViewModel(repo)
+        vm.onIntent(OwnerDashboardIntent.Refresh)
         assertEquals("100.00", (vm.state.value.dashboard as Load.Success).data.todaySales)
     }
 }

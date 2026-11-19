@@ -71,18 +71,18 @@ private fun OverviewScreen(vm: AdminOverviewViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     when (val o = state.overview) {
         Load.Loading -> CenteredLoading()
-        is Load.Error -> ErrorState(o.message, vm::refresh)
+        is Load.Error -> ErrorState(o.message) { vm.onIntent(AdminOverviewIntent.Refresh()) }
         is Load.Success -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val d = o.data
             item {
                 AppCard {
                     Text("Report period", style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                        OutlinedTextField(state.from, { vm.setRange(it, state.to) }, label = { Text("From (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f))
-                        OutlinedTextField(state.to, { vm.setRange(state.from, it) }, label = { Text("To (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(state.from, { vm.onIntent(AdminOverviewIntent.SetRange(it, state.to)) }, label = { Text("From (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(state.to, { vm.onIntent(AdminOverviewIntent.SetRange(state.from, it)) }, label = { Text("To (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f))
                     }
                     state.rangeError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                    Button(onClick = vm::applyRange, modifier = Modifier.padding(top = 8.dp)) { Text("Apply") }
+                    Button(onClick = { vm.onIntent(AdminOverviewIntent.ApplyRange) }, modifier = Modifier.padding(top = 8.dp)) { Text("Apply") }
                 }
             }
             item {
@@ -140,13 +140,13 @@ private fun HotelsScreen(vm: AdminHotelsViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
-            state.query, vm::setQuery, label = { Text("Search hotels") }, singleLine = true,
+            state.query, { vm.onIntent(AdminHotelsIntent.SetQuery(it)) }, label = { Text("Search hotels") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         )
         ErrorText(state.message)
         when (val h = state.hotels) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(h.message, vm::refresh)
+            is Load.Error -> ErrorState(h.message) { vm.onIntent(AdminHotelsIntent.Refresh) }
             is Load.Success ->
                 if (h.data.isEmpty()) EmptyState("No hotels found")
                 else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -185,9 +185,9 @@ private fun HotelsScreen(vm: AdminHotelsViewModel) {
                             }
                             Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (status != "APPROVED") Button(enabled = !busy, onClick = { vm.setApproval(hotel.id, "APPROVED") }) { Text("Approve") }
-                                if (status == "PENDING") OutlinedButton(enabled = !busy, onClick = { vm.setApproval(hotel.id, "REJECTED") }) { Text("Reject") }
-                                if (status == "APPROVED") OutlinedButton(enabled = !busy, onClick = { vm.setApproval(hotel.id, "SUSPENDED") }) { Text("Suspend") }
+                                if (status != "APPROVED") Button(enabled = !busy, onClick = { vm.onIntent(AdminHotelsIntent.SetApproval(hotel.id, "APPROVED")) }) { Text("Approve") }
+                                if (status == "PENDING") OutlinedButton(enabled = !busy, onClick = { vm.onIntent(AdminHotelsIntent.SetApproval(hotel.id, "REJECTED")) }) { Text("Reject") }
+                                if (status == "APPROVED") OutlinedButton(enabled = !busy, onClick = { vm.onIntent(AdminHotelsIntent.SetApproval(hotel.id, "SUSPENDED")) }) { Text("Suspend") }
                             }
                         }
                     }
@@ -210,13 +210,13 @@ private fun CustomersScreen(vm: AdminCustomersViewModel) {
     var confirm by remember { mutableStateOf<CustomerDto?>(null) }
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
-            state.query, vm::setQuery, label = { Text("Search customers") }, singleLine = true,
+            state.query, { vm.onIntent(AdminCustomersIntent.SetQuery(it)) }, label = { Text("Search customers") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         )
         ErrorText(state.message)
         when (val p = state.page) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(p.message, vm::refresh)
+            is Load.Error -> ErrorState(p.message) { vm.onIntent(AdminCustomersIntent.Refresh) }
             is Load.Success -> Column(Modifier.fillMaxSize()) {
                 if (p.data.items.isEmpty()) EmptyState("No customers found")
                 else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -225,13 +225,13 @@ private fun CustomersScreen(vm: AdminCustomersViewModel) {
                             Text(c.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Text("@${c.username} · ${c.orderCount} orders", style = MaterialTheme.typography.bodyMedium)
                             Text(if (c.active) "✔ Active" else "⛔ Deactivated", style = MaterialTheme.typography.labelLarge)
-                            OutlinedButton(enabled = c.id !in state.busy, onClick = { if (c.active) confirm = c else vm.setActive(c.id, true) }) {
+                            OutlinedButton(enabled = c.id !in state.busy, onClick = { if (c.active) confirm = c else vm.onIntent(AdminCustomersIntent.SetActive(c.id, true)) }) {
                                 Text(if (c.active) "Deactivate" else "Reactivate")
                             }
                         }
                     }
                 }
-                Pager(p.data.page, p.data.pageSize, p.data.total, vm::goToPage)
+                Pager(p.data.page, p.data.pageSize, p.data.total) { vm.onIntent(AdminCustomersIntent.GoToPage(it)) }
             }
         }
     }
@@ -240,7 +240,7 @@ private fun CustomersScreen(vm: AdminCustomersViewModel) {
             onDismissRequest = { confirm = null },
             title = { Text("Deactivate ${c.displayName}?") },
             text = { Text("They will be signed out and unable to log in until reactivated.") },
-            confirmButton = { TextButton(onClick = { vm.setActive(c.id, false); confirm = null }) { Text("Deactivate") } },
+            confirmButton = { TextButton(onClick = { vm.onIntent(AdminCustomersIntent.SetActive(c.id, false)); confirm = null }) { Text("Deactivate") } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
         )
     }
@@ -256,14 +256,14 @@ private fun AdminOrdersScreen(vm: AdminOrdersViewModel) {
             Box {
                 OutlinedButton(onClick = { open = true }) { Text(state.status?.name ?: "All") }
                 DropdownMenu(open, { open = false }) {
-                    DropdownMenuItem(text = { Text("All") }, onClick = { vm.setStatus(null); open = false })
-                    OrderStatus.entries.forEach { s -> DropdownMenuItem(text = { Text(s.name) }, onClick = { vm.setStatus(s); open = false }) }
+                    DropdownMenuItem(text = { Text("All") }, onClick = { vm.onIntent(AdminOrdersIntent.SetStatus(null)); open = false })
+                    OrderStatus.entries.forEach { s -> DropdownMenuItem(text = { Text(s.name) }, onClick = { vm.onIntent(AdminOrdersIntent.SetStatus(s)); open = false }) }
                 }
             }
         }
         when (val p = state.page) {
             Load.Loading -> CenteredLoading()
-            is Load.Error -> ErrorState(p.message, vm::refresh)
+            is Load.Error -> ErrorState(p.message) { vm.onIntent(AdminOrdersIntent.Refresh) }
             is Load.Success -> Column(Modifier.fillMaxSize()) {
                 if (p.data.items.isEmpty()) EmptyState("No orders found")
                 else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -278,7 +278,7 @@ private fun AdminOrdersScreen(vm: AdminOrdersViewModel) {
                         }
                     }
                 }
-                Pager(p.data.page, p.data.pageSize, p.data.total, vm::goToPage)
+                Pager(p.data.page, p.data.pageSize, p.data.total) { vm.onIntent(AdminOrdersIntent.GoToPage(it)) }
             }
         }
     }

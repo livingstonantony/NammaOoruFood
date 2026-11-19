@@ -46,7 +46,7 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
     val top = nav.top
     val notifications: NotificationsViewModel = koinViewModel(key = "${user.id}-notifications")
     val unread by notifications.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { while (true) { notifications.refresh(); delay(POLL_MILLIS) } }
+    LaunchedEffect(Unit) { while (true) { notifications.onIntent(NotificationsIntent.Refresh); delay(POLL_MILLIS) } }
     BackHandler(enabled = top != null || nav.tab != Tab.Home) {
         if (top != null) nav.pop() else nav.tab = Tab.Home
     }
@@ -75,8 +75,8 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
             unread.unread.firstOrNull()?.let { n ->
                 NotificationBanner(
                     n,
-                    onView = { notifications.dismiss(n.id); n.orderId?.let(nav::showOrder) },
-                    onDismiss = { notifications.dismiss(n.id) },
+                    onView = { notifications.onIntent(NotificationsIntent.Dismiss(n.id)); n.orderId?.let(nav::showOrder) },
+                    onDismiss = { notifications.onIntent(NotificationsIntent.Dismiss(n.id)) },
                 )
             }
             Box(Modifier.weight(1f)) {

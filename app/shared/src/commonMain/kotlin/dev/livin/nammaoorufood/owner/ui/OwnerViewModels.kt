@@ -24,20 +24,40 @@ data class OwnerHotelState(
     val hotel: HotelDto? get() = (hotels as? Load.Success)?.data?.firstOrNull()
 }
 
+sealed interface OwnerHotelIntent {
+    data object Refresh : OwnerHotelIntent
+    data object DismissMessage : OwnerHotelIntent
+    data class CreateHotel(val name: String, val description: String, val address: String, val phone: String) : OwnerHotelIntent
+    data class UpdateHotel(val id: Long, val name: String, val description: String, val address: String, val phone: String) : OwnerHotelIntent
+    data class SetHours(val id: Long, val rows: List<HoursRow>) : OwnerHotelIntent
+    data class SetAccepting(val id: Long, val accepting: Boolean) : OwnerHotelIntent
+}
+
 class OwnerHotelViewModel(private val repo: OwnerRepository) : ViewModel() {
     private val _state = MutableStateFlow(OwnerHotelState())
     val state: StateFlow<OwnerHotelState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun refresh() {
+    fun onIntent(intent: OwnerHotelIntent) {
+        when (intent) {
+            OwnerHotelIntent.Refresh -> refresh()
+            OwnerHotelIntent.DismissMessage -> dismissMessage()
+            is OwnerHotelIntent.CreateHotel -> createHotel(intent.name, intent.description, intent.address, intent.phone)
+            is OwnerHotelIntent.UpdateHotel -> updateHotel(intent.id, intent.name, intent.description, intent.address, intent.phone)
+            is OwnerHotelIntent.SetHours -> setHours(intent.id, intent.rows)
+            is OwnerHotelIntent.SetAccepting -> setAccepting(intent.id, intent.accepting)
+        }
+    }
+
+    private fun refresh() {
         viewModelScope.launch {
             val result = repo.hotels()
             _state.update { if (result is ApiResult.Success || it.hotels !is Load.Success) it.copy(hotels = result.toLoad()) else it }
         }
     }
 
-    fun dismissMessage() = _state.update { it.copy(message = null) }
+    private fun dismissMessage() = _state.update { it.copy(message = null) }
 
     private fun mutate(action: suspend () -> ApiResult<HotelDto>, onDone: (() -> Unit)? = null) {
         if (_state.value.saving) return
@@ -57,24 +77,24 @@ class OwnerHotelViewModel(private val repo: OwnerRepository) : ViewModel() {
         }
     }
 
-    fun createHotel(name: String, description: String, address: String, phone: String) {
+    private fun createHotel(name: String, description: String, address: String, phone: String) {
         validateHotelForm(name, address)?.let { return _state.update { s -> s.copy(message = it) } }
         mutate({ repo.createHotel(request(name, description, address, phone)) })
     }
 
-    fun updateHotel(id: Long, name: String, description: String, address: String, phone: String) {
+    private fun updateHotel(id: Long, name: String, description: String, address: String, phone: String) {
         validateHotelForm(name, address)?.let { return _state.update { s -> s.copy(message = it) } }
         mutate({ repo.updateHotel(id, request(name, description, address, phone)) })
     }
 
-    fun setHours(id: Long, rows: List<HoursRow>) {
+    private fun setHours(id: Long, rows: List<HoursRow>) {
         when (val r = buildHours(rows)) {
             is HoursResult.Invalid -> _state.update { it.copy(message = r.message) }
             is HoursResult.Valid -> mutate({ repo.setHours(id, r.hours) })
         }
     }
 
-    fun setAccepting(id: Long, accepting: Boolean) = mutate({ repo.setAcceptingOrders(id, accepting) })
+    private fun setAccepting(id: Long, accepting: Boolean) = mutate({ repo.setAcceptingOrders(id, accepting) })
 
     private fun request(name: String, description: String, address: String, phone: String) =
         HotelRequest(name.trim(), description.trim().ifEmpty { null }, address.trim(), phone.trim().ifEmpty { null })
@@ -84,13 +104,23 @@ class OwnerHotelViewModel(private val repo: OwnerRepository) : ViewModel() {
 
 data class OwnerDashboardState(val dashboard: Load<OwnerDashboardDto> = Load.Loading)
 
+sealed interface OwnerDashboardIntent {
+    data object Refresh : OwnerDashboardIntent
+}
+
 class OwnerDashboardViewModel(private val repo: OwnerRepository) : ViewModel() {
     private val _state = MutableStateFlow(OwnerDashboardState())
     val state: StateFlow<OwnerDashboardState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun refresh() {
+    fun onIntent(intent: OwnerDashboardIntent) {
+        when (intent) {
+            OwnerDashboardIntent.Refresh -> refresh()
+        }
+    }
+
+    private fun refresh() {
         viewModelScope.launch {
             val r = repo.dashboard()
             _state.update { if (r is ApiResult.Success || it.dashboard !is Load.Success) OwnerDashboardState(r.toLoad()) else it }
@@ -191,22 +221,53 @@ data class OwnerMenuState(
     val message: String? = null,
 )
 
+sealed interface OwnerMenuIntent {
+    data object Refresh : OwnerMenuIntent
+    data object DismissMessage : OwnerMenuIntent
+    data class AddCategory(val name: String, val onAdded: (Long) -> Unit = {}) : OwnerMenuIntent
+    data class ToggleAvailability(val item: FoodItemDto) : OwnerMenuIntent
+    data class UpdateStockQuantity(val item: FoodItemDto, val newQuantity: Int?) : OwnerMenuIntent
+    data class Save(
+        val itemId: Long?,
+        val name: String,
+        val description: String,
+        val price: String,
+        val categoryId: Long?,
+        val available: Boolean,
+        val quantityAvailable: Int?,
+        val onSaved: () -> Unit,
+    ) : OwnerMenuIntent
+    data class Delete(val itemId: Long) : OwnerMenuIntent
+}
+
 class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepository) : ViewModel() {
     private val _state = MutableStateFlow(OwnerMenuState())
     val state: StateFlow<OwnerMenuState> = _state.asStateFlow()
 
     init { refresh() }
 
-    fun refresh() {
+    fun onIntent(intent: OwnerMenuIntent) {
+        when (intent) {
+            OwnerMenuIntent.Refresh -> refresh()
+            OwnerMenuIntent.DismissMessage -> dismissMessage()
+            is OwnerMenuIntent.AddCategory -> addCategory(intent.name, intent.onAdded)
+            is OwnerMenuIntent.ToggleAvailability -> toggleAvailability(intent.item)
+            is OwnerMenuIntent.UpdateStockQuantity -> updateStockQuantity(intent.item, intent.newQuantity)
+            is OwnerMenuIntent.Save -> save(intent.itemId, intent.name, intent.description, intent.price, intent.categoryId, intent.available, intent.quantityAvailable, intent.onSaved)
+            is OwnerMenuIntent.Delete -> delete(intent.itemId)
+        }
+    }
+
+    private fun refresh() {
         viewModelScope.launch {
             val r = repo.menu(hotelId)
             _state.update { if (r is ApiResult.Success || it.menu !is Load.Success) it.copy(menu = r.toLoad()) else it }
         }
     }
 
-    fun dismissMessage() = _state.update { it.copy(message = null) }
+    private fun dismissMessage() = _state.update { it.copy(message = null) }
 
-    fun addCategory(name: String, onAdded: (Long) -> Unit = {}) {
+    private fun addCategory(name: String, onAdded: (Long) -> Unit = {}) {
         validateCategoryName(name)?.let { return _state.update { s -> s.copy(message = it) } }
         if (_state.value.saving) return
         _state.update { it.copy(saving = true, message = null) }
@@ -220,7 +281,7 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
         }
     }
 
-    fun toggleAvailability(item: FoodItemDto) {
+    private fun toggleAvailability(item: FoodItemDto) {
         if (item.id in _state.value.busy) return
         _state.update { it.copy(busy = it.busy + item.id, message = null) }
         viewModelScope.launch {
@@ -236,7 +297,7 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
         }
     }
 
-    fun updateStockQuantity(item: FoodItemDto, newQuantity: Int?) {
+    private fun updateStockQuantity(item: FoodItemDto, newQuantity: Int?) {
         if (item.id in _state.value.busy) return
         val target = newQuantity?.coerceAtLeast(0)
         val available = if (target != null) target > 0 else item.available
@@ -255,7 +316,7 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
     }
 
     /** [itemId] null creates a new item. [onSaved] runs only on success so the editor can close. */
-    fun save(itemId: Long?, name: String, description: String, price: String, categoryId: Long?, available: Boolean, quantityAvailable: Int?, onSaved: () -> Unit) {
+    private fun save(itemId: Long?, name: String, description: String, price: String, categoryId: Long?, available: Boolean, quantityAvailable: Int?, onSaved: () -> Unit) {
         if (_state.value.saving) return
         (validateItemName(name) ?: validatePrice(price))?.let { return _state.update { s -> s.copy(message = it) } }
         val request = FoodItemRequest(name.trim(), description.trim().ifEmpty { null }, price.trim(), categoryId, available, quantityAvailable)
@@ -270,7 +331,7 @@ class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepos
         }
     }
 
-    fun delete(itemId: Long) {
+    private fun delete(itemId: Long) {
         if (itemId in _state.value.busy) return
         _state.update { it.copy(busy = it.busy + itemId, message = null) }
         viewModelScope.launch {

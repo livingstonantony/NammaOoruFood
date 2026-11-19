@@ -123,7 +123,7 @@ class CustomerViewModelsTest {
         shop.active = ApiResult.Success(listOf(anOrder(1)))
         val vm = OrdersViewModel(shop)
         shop.active = ApiResult.NetworkError("x")
-        vm.refresh()
+        vm.onIntent(OrdersIntent.Refresh)
         assertEquals(1, vm.state.value.active.size)
         assertTrue(vm.state.value.load is Load.Success)
     }
@@ -133,20 +133,20 @@ class CustomerViewModelsTest {
         val vm = OrderDetailViewModel(1, shop)
         assertEquals(7, (vm.state.value.order as Load.Success).data.pickupToken)
         shop.single = ApiResult.Success(anOrder(1, OrderStatus.READY_FOR_PICKUP, 7))
-        vm.refresh()
+        vm.onIntent(OrderDetailIntent.Refresh)
         assertEquals(OrderStatus.READY_FOR_PICKUP, (vm.state.value.order as Load.Success).data.status)
         shop.single = ApiResult.NetworkError("x")
-        vm.refresh()
+        vm.onIntent(OrderDetailIntent.Refresh)
         assertTrue(vm.state.value.order is Load.Success)
     }
 
     @Test fun cancelUpdatesOrderAndFailureSurfacesError() = runTest {
         val vm = OrderDetailViewModel(1, shop)
-        vm.cancel()
+        vm.onIntent(OrderDetailIntent.Cancel)
         assertEquals(OrderStatus.CANCELLED, (vm.state.value.order as Load.Success).data.status)
         assertFalse(vm.state.value.cancelling)
         shop.cancel = ApiResult.Rejected(409, "Order can no longer be cancelled", false)
-        vm.cancel()
+        vm.onIntent(OrderDetailIntent.Cancel)
         assertEquals("Order can no longer be cancelled", vm.state.value.actionError)
         assertEquals(2, shop.cancelCalls)
     }
@@ -154,9 +154,9 @@ class CustomerViewModelsTest {
     @Test fun notificationsLoadAndDismissMarksRead() = runTest {
         shop.notifications = ApiResult.Success(NotificationPage(listOf(NotificationDto(4, 9, "ORDER_READY", "Ready", "msg", false, "t")), 1))
         val vm = NotificationsViewModel(shop)
-        vm.refresh()
+        vm.onIntent(NotificationsIntent.Refresh)
         assertEquals(1, vm.state.value.unread.size)
-        vm.dismiss(4)
+        vm.onIntent(NotificationsIntent.Dismiss(4))
         assertTrue(vm.state.value.unread.isEmpty())
         assertEquals(listOf(4L), shop.read)
     }
