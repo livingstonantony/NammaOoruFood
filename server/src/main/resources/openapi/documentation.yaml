@@ -3,467 +3,1614 @@ info:
   title: Namma Ooru Food API
   version: 1.0.0
   description: |
-    Pickup-only food ordering for village hotels. Authentication is username/password; the server issues
-    short-lived JWT access tokens and rotating refresh tokens. Prices and totals are always computed by the server.
+    Pickup-only food ordering system for village hotels. Authentication is username/password based;
+    the server issues short-lived JWT access tokens and rotating refresh tokens.
+    Prices and line totals are strictly calculated server-side based on hotel menu items.
+    Real-time updates for hotels, menus, and orders are pushed via WebSockets (`/ws/events`).
 servers:
   - url: http://localhost:8080
 security:
   - bearerAuth: []
 tags:
   - name: Auth
+    description: User registration, login, JWT token refresh, session logout, and profile
   - name: Hotels
+    description: Public and customer hotel listing & details
   - name: Menu
+    description: Menu categories and food items management
   - name: Orders
+    description: Customer order placement, tracking, cancellation, and owner order workflow
   - name: Owner
+    description: Hotel owner profile management, operating hours, order toggling, and dashboard
   - name: Notifications
+    description: User notifications for order status changes
   - name: Admin
+    description: Platform administration, hotel approvals, owner account creation, customer management, and sales reports
   - name: WebSockets
+    description: Real-time live event streaming over WebSockets
 paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns liveness status of the server application.
+      security: []
+      responses:
+        '200':
+          description: Server is healthy and running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
   /ws/events:
     get:
       tags: [WebSockets]
       summary: Real-time event bus WebSocket connection
-      description: Connect via ws://<host>:8080/ws/events to receive real-time order, hotel, and menu event updates.
+      description: |
+        Connect via WebSocket (`ws://<host>:8080/ws/events` or `wss://<host>:8080/ws/events`).
+        
+        **Client Messages:**
+        - Text frame `"ping"`: Server responds with a text frame `"pong"`.
+
+        **Server Broadcasts:**
+        - Whenever a hotel, menu, or order changes, the server broadcasts a JSON frame matching `LiveEvent`.
+        - Event Types:
+          - `HOTEL_UPDATED`: ID is the hotelId
+          - `MENU_UPDATED`: ID is the hotelId
+          - `ORDER_UPDATED`: ID is the orderId
       responses:
-        '101': { description: Switching Protocols to WebSocket }
-  /health:
-    get:
-      summary: Liveness check
-      security: []
-      responses:
-        '200': { description: Server is up }
+        '101':
+          description: Switching Protocols to WebSocket. Receives JSON `LiveEvent` frames.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveEvent'
   /auth/register:
     post:
       tags: [Auth]
-      summary: Register a customer account (rate limited)
+      summary: Register a customer account
+      description: Registers a new customer account. Rate limited per IP.
       security: []
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } } }
-      responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
-        '400': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
-  /auth/login:
-    post:
-      tags: [Auth]
-      summary: Sign in with username and password (rate limited)
-      security: []
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
-        '401': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Exchange a refresh token for new tokens (the old refresh token becomes invalid)
-      security: []
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RefreshRequest' } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
-        '401': { $ref: '#/components/responses/Error' }
-  /auth/logout:
-    post:
-      tags: [Auth]
-      summary: Revoke the session of a refresh token
-      security: []
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RefreshRequest' } } } }
-      responses:
-        '204': { description: Session revoked }
-  /auth/me:
-    get:
-      tags: [Auth]
-      summary: Current user
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
-        '401': { $ref: '#/components/responses/Error' }
-  /hotels:
-    get:
-      tags: [Hotels]
-      summary: List approved hotels
-      parameters:
-        - { name: q, in: query, schema: { type: string } }
-        - { name: openOnly, in: query, schema: { type: boolean } }
-        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
-        - { name: pageSize, in: query, schema: { type: integer } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/HotelPage' } } } }
-  /hotels/{hotelId}:
-    get:
-      tags: [Hotels]
-      summary: Hotel details
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
-        '404': { $ref: '#/components/responses/Error' }
-  /hotels/{hotelId}/menu:
-    get:
-      tags: [Menu]
-      summary: Menu of a hotel
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Menu' } } } }
-  /hotels/{hotelId}/menu/categories:
-    post:
-      tags: [Menu]
-      summary: Create a category (owner of the hotel)
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CategoryRequest' } } } }
-      responses:
-        '201': { description: Created }
-        '403': { $ref: '#/components/responses/Error' }
-  /hotels/{hotelId}/menu/items:
-    post:
-      tags: [Menu]
-      summary: Create a food item (owner of the hotel)
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FoodItemRequest' } } } }
-      responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/FoodItem' } } } }
-        '403': { $ref: '#/components/responses/Error' }
-  /hotels/{hotelId}/menu/items/{itemId}:
-    put:
-      tags: [Menu]
-      summary: Update a food item (owner of the hotel)
-      parameters: [ { $ref: '#/components/parameters/hotelId' }, { $ref: '#/components/parameters/itemId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FoodItemRequest' } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FoodItem' } } } }
-    delete:
-      tags: [Menu]
-      summary: Delete a food item (past orders keep their snapshots)
-      parameters: [ { $ref: '#/components/parameters/hotelId' }, { $ref: '#/components/parameters/itemId' } ]
-      responses:
-        '204': { description: Deleted }
-  /hotels/{hotelId}/menu/items/{itemId}/availability:
-    patch:
-      tags: [Menu]
-      summary: Mark an item available or sold out and update stock quantity
-      parameters: [ { $ref: '#/components/parameters/hotelId' }, { $ref: '#/components/parameters/itemId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { available: { type: boolean }, quantityAvailable: { type: integer, nullable: true } } } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FoodItem' } } } }
-  /orders:
-    post:
-      tags: [Orders]
-      summary: Place an order (customer). Totals are computed by the server.
-      parameters:
-        - { name: Idempotency-Key, in: header, required: false, schema: { type: string }, description: Repeating a key returns the original order }
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PlaceOrderRequest' } } } }
-      responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '200': { description: Existing order returned for a repeated Idempotency-Key }
-        '400': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
-    get:
-      tags: [Orders]
-      summary: Order history of the caller (customers see their own orders)
-      parameters:
-        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
-        - { name: page, in: query, schema: { type: integer } }
-        - { name: pageSize, in: query, schema: { type: integer } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPage' } } } }
-  /orders/active:
-    get:
-      tags: [Orders]
-      summary: Orders that are not yet completed or rejected
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } }
-  /orders/{orderId}:
-    get:
-      tags: [Orders]
-      summary: Order details (own order, or an order of the owner's hotel)
-      parameters: [ { $ref: '#/components/parameters/orderId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '404': { $ref: '#/components/responses/Error' }
-  /orders/{orderId}/accept:
-    post:
-      tags: [Orders]
-      summary: Accept a PLACED order and assign its pickup token (hotel owner)
-      parameters: [ { $ref: '#/components/parameters/orderId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '409': { $ref: '#/components/responses/Error' }
-  /orders/{orderId}/reject:
-    post:
-      tags: [Orders]
-      summary: Reject a PLACED order (hotel owner)
-      parameters: [ { $ref: '#/components/parameters/orderId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '409': { $ref: '#/components/responses/Error' }
-  /orders/{orderId}/cancel:
-    post:
-      tags: [Orders]
-      summary: Cancel own order while still PLACED (customer)
-      parameters: [ { $ref: '#/components/parameters/orderId' } ]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '404': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
-  /orders/{orderId}/status:
-    patch:
-      tags: [Orders]
-      summary: Advance an order (ACCEPTED to PREPARING to READY_FOR_PICKUP to COMPLETED)
-      parameters: [ { $ref: '#/components/parameters/orderId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { $ref: '#/components/schemas/OrderStatus' } } } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
-        '409': { $ref: '#/components/responses/Error' }
-  /owner/hotels:
-    get:
-      tags: [Owner]
-      summary: Hotels owned by the caller
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Hotel' } } } } }
-    post:
-      tags: [Owner]
-      summary: Register a hotel (starts PENDING until an admin approves)
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HotelRequest' } } } }
-      responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
-  /owner/hotels/{hotelId}:
-    put:
-      tags: [Owner]
-      summary: Update hotel profile
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HotelRequest' } } } }
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
-  /owner/hotels/{hotelId}/hours:
-    put:
-      tags: [Owner]
-      summary: Replace operating hours (dayOfWeek 1=Monday..7=Sunday, HH:mm, Asia/Kolkata)
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [hours]
-              properties: { hours: { type: array, items: { $ref: '#/components/schemas/OperatingHour' } } }
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in with username and password
+      description: Authenticates user credentials and returns JWT access and refresh tokens. Rate limited.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh JWT access token
+      description: Exchanges a valid refresh token for a new pair of access and refresh tokens. Invalidates the old refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout user session
+      description: Revokes the session associated with the provided refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Session successfully revoked
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      description: Returns information about the currently authenticated user.
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Error'
+  /hotels:
+    get:
+      tags: [Hotels]
+      summary: List approved hotels
+      description: Retrieves a paginated list of approved hotels. Optional text search and open-status filter.
+      parameters:
+        - name: q
+          in: query
+          description: Search term for hotel name or description
+          schema:
+            type: string
+        - name: openOnly
+          in: query
+          description: Filter for currently open hotels
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of approved hotels
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelPage'
+  /hotels/{hotelId}:
+    get:
+      tags: [Hotels]
+      summary: Get hotel details
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      responses:
+        '200':
+          description: Hotel details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
+        '404':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu:
+    get:
+      tags: [Menu]
+      summary: Get menu for a hotel
+      description: Returns all categories and food items for the specified hotel.
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      responses:
+        '200':
+          description: Hotel menu retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Menu'
+        '404':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu/categories:
+    post:
+      tags: [Menu]
+      summary: Create menu category
+      description: Creates a new menu category for a hotel (Hotel Owner or Admin).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDto'
+        '403':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu/items:
+    post:
+      tags: [Menu]
+      summary: Create food item
+      description: Adds a food item to a hotel's menu (Hotel Owner or Admin).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodItemRequest'
+      responses:
+        '201':
+          description: Food item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+        '403':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu/items/{itemId}:
+    put:
+      tags: [Menu]
+      summary: Update food item
+      description: Updates food item details, price, category, or inventory tracking (Hotel Owner or Admin).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+        - $ref: '#/components/parameters/itemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodItemRequest'
+      responses:
+        '200':
+          description: Food item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [Menu]
+      summary: Delete food item
+      description: Removes a food item from the menu (Past order snapshots retain historical item details).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+        - $ref: '#/components/parameters/itemId'
+      responses:
+        '204':
+          description: Food item deleted
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu/items/{itemId}/availability:
+    patch:
+      tags: [Menu]
+      summary: Update item availability or stock
+      description: Updates availability flag or stock quantity for a menu item.
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+        - $ref: '#/components/parameters/itemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityRequest'
+      responses:
+        '200':
+          description: Availability updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /hotels/{hotelId}/menu/items/{itemId}/stock:
+    patch:
+      tags: [Menu]
+      summary: Update item stock (Alias endpoint)
+      description: Alias endpoint for updating item availability or stock quantity.
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+        - $ref: '#/components/parameters/itemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityRequest'
+      responses:
+        '200':
+          description: Stock updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Place an order
+      description: |
+        Places a new pickup order (Customer). Prices and line totals are strictly calculated server-side.
+        Supports idempotency using the optional `Idempotency-Key` header.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Unique key for idempotent order creation. Resending the key returns the original order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: Existing order returned for a repeated Idempotency-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [Orders]
+      summary: List customer order history
+      description: Retrieves order history for the authenticated customer. Optional status filter and pagination.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Order history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+  /orders/active:
+    get:
+      tags: [Orders]
+      summary: Get active orders
+      description: Returns all orders for the caller that are currently active (not terminal COMPLETED, REJECTED, or CANCELLED).
+      responses:
+        '200':
+          description: Active orders list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get order details
+      parameters:
+        - $ref: '#/components/parameters/orderId'
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/Error'
+  /orders/{orderId}/accept:
+    post:
+      tags: [Orders]
+      summary: Accept order (Hotel Owner)
+      description: Transitions order from PLACED to ACCEPTED and assigns a daily sequential pickup token for the hotel.
+      parameters:
+        - $ref: '#/components/parameters/orderId'
+      responses:
+        '200':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Error'
+  /orders/{orderId}/reject:
+    post:
+      tags: [Orders]
+      summary: Reject order (Hotel Owner)
+      description: Rejects a PLACED order.
+      parameters:
+        - $ref: '#/components/parameters/orderId'
+      responses:
+        '200':
+          description: Order rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Error'
+  /orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order (Customer)
+      description: Allows customer to cancel their order if it is still in PLACED status.
+      parameters:
+        - $ref: '#/components/parameters/orderId'
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /orders/{orderId}/status:
+    patch:
+      tags: [Orders]
+      summary: Update order status (Hotel Owner)
+      description: Advances order status (ACCEPTED -> PREPARING -> READY_FOR_PICKUP -> COMPLETED).
+      parameters:
+        - $ref: '#/components/parameters/orderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Error'
+  /owner/hotels:
+    get:
+      tags: [Owner]
+      summary: List owned hotels
+      description: Returns all hotels registered by the authenticated owner.
+      responses:
+        '200':
+          description: List of owned hotels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Hotel'
+    post:
+      tags: [Owner]
+      summary: Register a hotel
+      description: Registers a new hotel under the caller's account. Starts in PENDING approval status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelRequest'
+      responses:
+        '201':
+          description: Hotel registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
+  /owner/hotels/{hotelId}:
+    put:
+      tags: [Owner]
+      summary: Update hotel profile
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelRequest'
+      responses:
+        '200':
+          description: Hotel updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
+  /owner/hotels/{hotelId}/hours:
+    put:
+      tags: [Owner]
+      summary: Update hotel operating hours
+      description: Sets operating hours schedule (dayOfWeek 1=Monday..7=Sunday, times formatted as HH:mm in Asia/Kolkata timezone).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatingHoursRequest'
+      responses:
+        '200':
+          description: Operating hours updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
   /owner/hotels/{hotelId}/accepting-orders:
     patch:
       tags: [Owner]
-      summary: Pause or resume accepting orders
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [acceptingOrders], properties: { acceptingOrders: { type: boolean } } } } } }
+      summary: Toggle order acceptance status
+      description: Enables or pauses accepting new orders for a hotel.
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptingOrdersRequest'
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
+        '200':
+          description: Order acceptance status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
   /owner/orders:
     get:
       tags: [Owner]
-      summary: Orders of the owner's hotels
+      summary: List owner hotel orders
+      description: Lists orders across hotels owned by the caller with optional status filters and hotelId filtering.
       parameters:
-        - { name: hotelId, in: query, schema: { type: integer, format: int64 } }
-        - { name: status, in: query, description: Comma separated statuses, schema: { type: string } }
-        - { name: page, in: query, schema: { type: integer } }
-        - { name: pageSize, in: query, schema: { type: integer } }
+        - name: hotelId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          description: Comma-separated list of OrderStatus values (e.g. PLACED,ACCEPTED)
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPage' } } } }
+        '200':
+          description: Owner orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
   /owner/dashboard:
     get:
       tags: [Owner]
-      summary: Today's sales and order counts
+      summary: Owner dashboard summary
+      description: Retrieves today's sales metrics and order breakdown for hotels owned by caller.
       responses:
-        '200': { description: OK }
+        '200':
+          description: Owner dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerDashboard'
   /notifications:
     get:
       tags: [Notifications]
-      summary: Notifications of the caller (e.g. ORDER_READY)
+      summary: List user notifications
+      description: Retrieves in-app notifications for order state updates for the authenticated user.
       parameters:
-        - { name: unread, in: query, schema: { type: boolean } }
-        - { name: limit, in: query, schema: { type: integer } }
+        - name: unread
+          in: query
+          description: Filter for unread notifications only
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
       responses:
-        '200': { description: OK }
+        '200':
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPage'
   /notifications/read-all:
     post:
       tags: [Notifications]
-      summary: Mark all notifications read
+      summary: Mark all notifications as read
       responses:
-        '204': { description: Done }
+        '204':
+          description: All notifications marked as read
   /notifications/{id}/read:
     post:
       tags: [Notifications]
-      summary: Mark one notification read
-      parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+      summary: Mark single notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
-        '204': { description: Done }
+        '204':
+          description: Notification marked as read
+        '404':
+          $ref: '#/components/responses/Error'
   /admin/hotels:
     get:
       tags: [Admin]
-      summary: All hotels including unapproved (admin)
-      parameters: [ { name: q, in: query, schema: { type: string } } ]
+      summary: List all hotels for administration
+      description: Lists all hotels including unapproved, rejected, or suspended ones (Admin only).
+      parameters:
+        - name: q
+          in: query
+          description: Optional search filter for name or description
+          schema:
+            type: string
       responses:
-        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Hotel' } } } } }
+        '200':
+          description: List of all hotels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Hotel'
   /admin/hotels/{hotelId}/approval:
     patch:
       tags: [Admin]
-      summary: Approve, reject or suspend a hotel
-      parameters: [ { $ref: '#/components/parameters/hotelId' } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { type: string, enum: [PENDING, APPROVED, REJECTED, SUSPENDED] } } } } } }
+      summary: Update hotel approval status
+      description: Approves, rejects, or suspends a hotel registration (Admin only).
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Hotel' } } } }
+        '200':
+          description: Hotel approval status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hotel'
   /admin/owners:
     post:
       tags: [Admin]
-      summary: Create a hotel owner account
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } } }
+      summary: Create hotel owner account
+      description: Creates a new user with the `HOTEL_OWNER` role (Admin only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
       responses:
-        '201': { description: Created }
+        '201':
+          description: Owner created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
   /admin/customers:
     get:
       tags: [Admin]
-      summary: Customers (search, filter, paginate)
+      summary: List customer accounts
+      description: Returns paginated customers with optional active status and search filter (Admin only).
       parameters:
-        - { name: q, in: query, schema: { type: string } }
-        - { name: active, in: query, schema: { type: boolean } }
-        - { name: page, in: query, schema: { type: integer } }
-        - { name: pageSize, in: query, schema: { type: integer } }
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
-        '200': { description: OK }
+        '200':
+          description: Customer page retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPage'
   /admin/customers/{id}/active:
     patch:
       tags: [Admin]
-      summary: Activate or deactivate a customer (deactivation revokes their sessions)
-      parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
-      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [active], properties: { active: { type: boolean } } } } } }
+      summary: Activate or deactivate customer account
+      description: Sets active status for a customer. Deactivating immediately revokes all active customer sessions (Admin only).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveRequest'
       responses:
-        '200': { description: OK }
+        '200':
+          description: Customer status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDto'
   /admin/orders:
     get:
       tags: [Admin]
-      summary: All orders (filter by status, hotelId, customerId, from, to as yyyy-MM-dd)
+      summary: List system-wide orders
+      description: Retrieves all orders across the system with filtering by status, hotelId, customerId, and date range (yyyy-MM-dd) (Admin only).
       parameters:
-        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
-        - { name: hotelId, in: query, schema: { type: integer, format: int64 } }
-        - { name: customerId, in: query, schema: { type: integer, format: int64 } }
-        - { name: from, in: query, schema: { type: string, format: date } }
-        - { name: to, in: query, schema: { type: string, format: date } }
-        - { name: page, in: query, schema: { type: integer } }
-        - { name: pageSize, in: query, schema: { type: integer } }
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: hotelId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          description: Inclusive start date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Inclusive end date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPage' } } } }
+        '200':
+          description: System-wide orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
   /admin/reports/overview:
     get:
       tags: [Admin]
-      summary: Platform overview
+      summary: Get platform overview report
+      description: Returns platform metrics (total sales, order status breakdown, customer count, hotel count) over an inclusive date range (Admin only).
       parameters:
-        - { name: from, in: query, schema: { type: string, format: date } }
-        - { name: to, in: query, schema: { type: string, format: date } }
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
       responses:
-        '200': { description: OK }
+        '200':
+          description: Platform overview report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOverview'
   /admin/reports/hotels:
     get:
       tags: [Admin]
-      summary: Hotel-wise sales
+      summary: Get hotel sales breakdown report
+      description: Returns per-hotel order counts and sales metrics for a given date range (Admin only).
       parameters:
-        - { name: from, in: query, schema: { type: string, format: date } }
-        - { name: to, in: query, schema: { type: string, format: date } }
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
       responses:
-        '200': { description: OK }
+        '200':
+          description: Hotel sales report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelSalesReport'
+
 components:
   securitySchemes:
-    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
-    hotelId: { name: hotelId, in: path, required: true, schema: { type: integer, format: int64 } }
-    itemId: { name: itemId, in: path, required: true, schema: { type: integer, format: int64 } }
-    orderId: { name: orderId, in: path, required: true, schema: { type: integer, format: int64 } }
+    hotelId:
+      name: hotelId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    itemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    orderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
   responses:
     Error:
-      description: Error
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+      description: Standard API Error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
-      properties: { code: { type: string }, message: { type: string } }
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid parameter"
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: "UP"
+    LiveEvent:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          example: "ORDER_UPDATED"
+          description: Event type (e.g. HOTEL_UPDATED, MENU_UPDATED, ORDER_UPDATED)
+        id:
+          type: integer
+          format: int64
+          nullable: true
+          example: 101
+          description: ID of affected entity (hotelId or orderId)
+        payload:
+          type: string
+          nullable: true
+          description: Optional event payload data
     RegisterRequest:
       type: object
       required: [username, password, displayName]
-      properties: { username: { type: string }, password: { type: string, format: password }, displayName: { type: string }, phone: { type: string } }
+      properties:
+        username:
+          type: string
+          example: "john_customer"
+        password:
+          type: string
+          format: password
+          example: "SecurePass123!"
+        displayName:
+          type: string
+          example: "John Doe"
+        phone:
+          type: string
+          nullable: true
+          example: "9876543210"
     LoginRequest:
       type: object
       required: [username, password]
-      properties: { username: { type: string }, password: { type: string, format: password } }
+      properties:
+        username:
+          type: string
+          example: "john_customer"
+        password:
+          type: string
+          format: password
+          example: "SecurePass123!"
     RefreshRequest:
       type: object
       required: [refreshToken]
-      properties: { refreshToken: { type: string } }
+      properties:
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     User:
       type: object
-      properties: { id: { type: integer, format: int64 }, username: { type: string }, displayName: { type: string }, role: { type: string, enum: [CUSTOMER, HOTEL_OWNER, ADMIN] } }
+      required: [id, username, displayName, role]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: "john_customer"
+        displayName:
+          type: string
+          example: "John Doe"
+        role:
+          type: string
+          enum: [CUSTOMER, HOTEL_OWNER, ADMIN]
+          example: "CUSTOMER"
+    CreateOwnerRequest:
+      type: object
+      required: [username, password, displayName]
+      properties:
+        username:
+          type: string
+          example: "hotel_owner_1"
+        password:
+          type: string
+          format: password
+          example: "OwnerSecret123!"
+        displayName:
+          type: string
+          example: "Owner Name"
+        phone:
+          type: string
+          nullable: true
+          example: "9876543210"
     AuthResponse:
       type: object
+      required: [accessToken, refreshToken, expiresInSeconds, user]
       properties:
-        accessToken: { type: string }
-        refreshToken: { type: string }
-        expiresInSeconds: { type: integer, format: int64 }
-        user: { $ref: '#/components/schemas/User' }
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresInSeconds:
+          type: integer
+          format: int64
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
     OperatingHour:
       type: object
-      properties: { dayOfWeek: { type: integer, minimum: 1, maximum: 7 }, opensAt: { type: string, example: '18:00' }, closesAt: { type: string, example: '23:00' } }
+      required: [dayOfWeek, opensAt, closesAt]
+      properties:
+        dayOfWeek:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 1
+          description: 1=Monday .. 7=Sunday
+        opensAt:
+          type: string
+          example: '18:00'
+        closesAt:
+          type: string
+          example: '23:00'
+    OperatingHoursRequest:
+      type: object
+      required: [hours]
+      properties:
+        hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatingHour'
     HotelRequest:
       type: object
       required: [name, address]
-      properties: { name: { type: string }, description: { type: string }, address: { type: string }, phone: { type: string } }
+      properties:
+        name:
+          type: string
+          example: "Amma Mess"
+        description:
+          type: string
+          nullable: true
+          example: "Traditional South Indian meals and tiffin"
+        address:
+          type: string
+          example: "Main Road, Village Center"
+        phone:
+          type: string
+          nullable: true
+          example: "9876543210"
+    AcceptingOrdersRequest:
+      type: object
+      required: [acceptingOrders]
+      properties:
+        acceptingOrders:
+          type: boolean
+          example: true
+    ApprovalRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, SUSPENDED]
+          example: "APPROVED"
     Hotel:
       type: object
+      required: [id, name, address, approvalStatus, acceptingOrders, isOpen, operatingHours]
       properties:
-        id: { type: integer, format: int64 }
-        name: { type: string }
-        description: { type: string }
-        address: { type: string }
-        phone: { type: string }
-        approvalStatus: { type: string, enum: [PENDING, APPROVED, REJECTED, SUSPENDED] }
-        acceptingOrders: { type: boolean }
-        isOpen: { type: boolean }
-        operatingHours: { type: array, items: { $ref: '#/components/schemas/OperatingHour' } }
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Amma Mess"
+        description:
+          type: string
+          nullable: true
+          example: "Traditional South Indian food"
+        address:
+          type: string
+          example: "Main Road, Village"
+        phone:
+          type: string
+          nullable: true
+          example: "9876543210"
+        approvalStatus:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, SUSPENDED]
+          example: "APPROVED"
+        acceptingOrders:
+          type: boolean
+          example: true
+        isOpen:
+          type: boolean
+          example: true
+        operatingHours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatingHour'
     HotelPage:
       type: object
-      properties: { items: { type: array, items: { $ref: '#/components/schemas/Hotel' } }, page: { type: integer }, pageSize: { type: integer }, total: { type: integer } }
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hotel'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 1
     CategoryRequest:
       type: object
       required: [name]
-      properties: { name: { type: string }, sortOrder: { type: integer } }
+      properties:
+        name:
+          type: string
+          example: "Main Course"
+        sortOrder:
+          type: integer
+          default: 0
+          example: 1
+    CategoryDto:
+      type: object
+      required: [id, name, sortOrder]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Main Course"
+        sortOrder:
+          type: integer
+          example: 1
     FoodItemRequest:
       type: object
       required: [name, price]
-      properties: { name: { type: string }, description: { type: string }, price: { type: string, example: '60.00' }, categoryId: { type: integer, format: int64 }, available: { type: boolean }, quantityAvailable: { type: integer, nullable: true, example: 50 } }
+      properties:
+        name:
+          type: string
+          example: "Chicken Biryani"
+        description:
+          type: string
+          nullable: true
+          example: "Spicy seeraga samba rice biryani"
+        price:
+          type: string
+          example: "150.00"
+        categoryId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        available:
+          type: boolean
+          default: true
+          example: true
+        quantityAvailable:
+          type: integer
+          nullable: true
+          example: 50
+        trackInventory:
+          type: boolean
+          default: false
+          example: true
+    AvailabilityRequest:
+      type: object
+      properties:
+        available:
+          type: boolean
+          nullable: true
+          example: true
+        quantityAvailable:
+          type: integer
+          nullable: true
+          example: 30
+        clearQuantity:
+          type: boolean
+          default: false
+          example: false
     FoodItem:
       type: object
-      properties: { id: { type: integer, format: int64 }, categoryId: { type: integer, format: int64 }, name: { type: string }, description: { type: string }, price: { type: string }, available: { type: boolean }, quantityAvailable: { type: integer, nullable: true, example: 50 } }
+      required: [id, name, price, available, trackInventory]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        categoryId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        name:
+          type: string
+          example: "Chicken Biryani"
+        description:
+          type: string
+          nullable: true
+          example: "Spicy seeraga samba rice biryani"
+        price:
+          type: string
+          example: "150.00"
+        available:
+          type: boolean
+          example: true
+        quantityAvailable:
+          type: integer
+          nullable: true
+          example: 50
+        trackInventory:
+          type: boolean
+          example: true
     Menu:
       type: object
-      properties: { categories: { type: array, items: { type: object } }, items: { type: array, items: { $ref: '#/components/schemas/FoodItem' } } }
+      required: [categories, items]
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryDto'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodItem'
     OrderStatus:
       type: string
       enum: [PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, REJECTED, CANCELLED]
+      example: "PLACED"
+    OrderLineRequest:
+      type: object
+      required: [foodItemId, quantity]
+      properties:
+        foodItemId:
+          type: integer
+          format: int64
+          example: 10
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
     PlaceOrderRequest:
       type: object
       required: [hotelId, items]
       properties:
-        hotelId: { type: integer, format: int64 }
-        note: { type: string }
-        items: { type: array, items: { type: object, required: [foodItemId, quantity], properties: { foodItemId: { type: integer, format: int64 }, quantity: { type: integer, minimum: 1 } } } }
+        hotelId:
+          type: integer
+          format: int64
+          example: 1
+        note:
+          type: string
+          nullable: true
+          example: "Less spicy please"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLineRequest'
+    OrderItemDto:
+      type: object
+      required: [name, unitPrice, quantity, lineTotal]
+      properties:
+        foodItemId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 10
+        name:
+          type: string
+          example: "Chicken Biryani"
+        unitPrice:
+          type: string
+          example: "150.00"
+        quantity:
+          type: integer
+          example: 2
+        lineTotal:
+          type: string
+          example: "300.00"
     Order:
       type: object
+      required: [id, hotelId, hotelName, customerName, status, total, items, createdAt, updatedAt]
       properties:
-        id: { type: integer, format: int64 }
-        hotelId: { type: integer, format: int64 }
-        hotelName: { type: string }
-        customerName: { type: string }
-        status: { $ref: '#/components/schemas/OrderStatus' }
-        total: { type: string }
-        note: { type: string }
-        pickupToken: { type: integer, description: Present once the order is accepted; numbered per hotel per day }
-        items: { type: array, items: { type: object, properties: { name: { type: string }, unitPrice: { type: string }, quantity: { type: integer }, lineTotal: { type: string } } } }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
+        id:
+          type: integer
+          format: int64
+          example: 1001
+        hotelId:
+          type: integer
+          format: int64
+          example: 1
+        hotelName:
+          type: string
+          example: "Amma Mess"
+        customerName:
+          type: string
+          example: "John Doe"
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        total:
+          type: string
+          example: "300.00"
+        note:
+          type: string
+          nullable: true
+          example: "Less spicy please"
+        pickupToken:
+          type: integer
+          nullable: true
+          example: 15
+          description: Sequential daily pickup token assigned when order is ACCEPTED by hotel
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemDto'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-03-31T10:15:30Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-03-31T10:15:30Z"
     OrderPage:
       type: object
-      properties: { items: { type: array, items: { $ref: '#/components/schemas/Order' } }, page: { type: integer }, pageSize: { type: integer }, total: { type: integer } }
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 1
+    StatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+    OwnerDashboard:
+      type: object
+      required: [todaySales, placed, accepted, preparing, readyForPickup, completedToday, rejectedToday]
+      properties:
+        todaySales:
+          type: string
+          example: "1250.00"
+        placed:
+          type: integer
+          example: 2
+        accepted:
+          type: integer
+          example: 1
+        preparing:
+          type: integer
+          example: 3
+        readyForPickup:
+          type: integer
+          example: 1
+        completedToday:
+          type: integer
+          example: 10
+        rejectedToday:
+          type: integer
+          example: 0
+    NotificationType:
+      type: string
+      enum: [ORDER_ACCEPTED, ORDER_REJECTED, ORDER_PREPARING, ORDER_READY]
+      example: "ORDER_READY"
+    NotificationDto:
+      type: object
+      required: [id, orderId, type, title, message, read, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 50
+        orderId:
+          type: integer
+          format: int64
+          example: 1001
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+          example: "Order Ready"
+        message:
+          type: string
+          example: "Your order #15 at Amma Mess is ready for pickup!"
+        read:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-03-31T10:30:00Z"
+    NotificationPage:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationDto'
+        unreadCount:
+          type: integer
+          example: 2
+    CustomerDto:
+      type: object
+      required: [id, username, displayName, active, createdAt, orderCount]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 5
+        username:
+          type: string
+          example: "john_customer"
+        displayName:
+          type: string
+          example: "John Doe"
+        phone:
+          type: string
+          nullable: true
+          example: "9876543210"
+        active:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          example: "2026-01-15T08:00:00Z"
+        orderCount:
+          type: integer
+          example: 12
+    CustomerPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerDto'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 1
+    ActiveRequest:
+      type: object
+      required: [active]
+      properties:
+        active:
+          type: boolean
+          example: false
+    HotelSalesRow:
+      type: object
+      required: [hotelId, hotelName, ordersPlaced, completedOrders, rejectedOrders, sales]
+      properties:
+        hotelId:
+          type: integer
+          format: int64
+          example: 1
+        hotelName:
+          type: string
+          example: "Amma Mess"
+        ordersPlaced:
+          type: integer
+          example: 15
+        completedOrders:
+          type: integer
+          example: 14
+        rejectedOrders:
+          type: integer
+          example: 1
+        sales:
+          type: string
+          example: "2100.00"
+    HotelSalesReport:
+      type: object
+      required: [from, to, rows]
+      properties:
+        from:
+          type: string
+          format: date
+          example: "2026-03-01"
+        to:
+          type: string
+          format: date
+          example: "2026-03-31"
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/HotelSalesRow'
+    PlatformOverview:
+      type: object
+      required: [from, to, ordersPlaced, completedOrders, rejectedOrders, totalSales, totalCustomers, activeCustomers, approvedHotels, pendingHotels]
+      properties:
+        from:
+          type: string
+          format: date
+          example: "2026-03-01"
+        to:
+          type: string
+          format: date
+          example: "2026-03-31"
+        ordersPlaced:
+          type: integer
+          example: 150
+        completedOrders:
+          type: integer
+          example: 140
+        rejectedOrders:
+          type: integer
+          example: 5
+        totalSales:
+          type: string
+          example: "25400.00"
+        totalCustomers:
+          type: integer
+          example: 45
+        activeCustomers:
+          type: integer
+          example: 42
+        approvedHotels:
+          type: integer
+          example: 8
+        pendingHotels:
+          type: integer
+          example: 2

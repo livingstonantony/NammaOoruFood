@@ -9,6 +9,7 @@ import dev.livin.nammaoorufood.hotel.*
 import dev.livin.nammaoorufood.order.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -20,7 +21,7 @@ import kotlin.test.*
 
 class AdminTest {
     private fun config() = AppConfig.fromEnv(
-        mapOf(
+        System.getenv() + mapOf(
             "APP_ENV" to "test",
             "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",
@@ -47,6 +48,10 @@ class AdminTest {
             this.method = method
             bearerAuth(token)
             if (body != null) { contentType(ContentType.Application.Json); setBody(body) }
+        }.also { resp ->
+            if (!resp.status.isSuccess()) {
+                println("TEST HTTP ERROR ${resp.status}: ${resp.bodyAsText()}")
+            }
         }
 
     private suspend fun HttpClient.token(user: String, pw: String) =
@@ -54,7 +59,7 @@ class AdminTest {
 
     private suspend fun ApplicationTestBuilder.fixture(): Fx {
         application { module(config()) }
-        val c = createClient { install(ContentNegotiation) { json() } }
+        val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")
         val customer = c.token("customer", "customer12345")
@@ -123,7 +128,8 @@ class AdminTest {
     @Test
     fun cannotDeactivateNonCustomersOrUnknownIds() = testApplication {
         val f = fixture()
-        val adminId = DriverManager.getConnection(config().database.url, "root", "root").use { c ->
+        val database = config().database
+        val adminId = DriverManager.getConnection(database.url, database.user, database.password).use { c ->
             c.createStatement().executeQuery("SELECT id FROM users WHERE username='admin'").use { it.next(); it.getLong(1) }
         }
         assertEquals(HttpStatusCode.NotFound, f.c.send(HttpMethod.Patch, "/admin/customers/$adminId/active", f.admin, ActiveRequest(false)).status)

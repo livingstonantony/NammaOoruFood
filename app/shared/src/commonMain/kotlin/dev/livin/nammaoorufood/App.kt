@@ -19,7 +19,6 @@ import dev.livin.nammaoorufood.customer.ui.CustomerApp
 import dev.livin.nammaoorufood.network.Role
 import dev.livin.nammaoorufood.owner.ui.OwnerApp
 import dev.livin.nammaoorufood.admin.ui.AdminApp
-import dev.livin.nammaoorufood.ui.HomeScreen
 import dev.livin.nammaoorufood.ui.NammaTheme
 import dev.livin.nammaoorufood.ui.SplashScreen
 import dev.livin.nammaoorufood.ui.login.LoginScreen

@@ -43,7 +43,11 @@ fun Route.hotelRoutes(service: HotelService) {
                         }
                         patch("/{itemId}/availability") {
                             val body = call.receive<AvailabilityRequest>()
-                            call.respond(service.setItemAvailability(call.principalOrThrow(), call.longParam("hotelId"), call.longParam("itemId"), body.available))
+                            call.respond(service.setItemAvailability(call.principalOrThrow(), call.longParam("hotelId"), call.longParam("itemId"), body))
+                        }
+                        patch("/{itemId}/stock") {
+                            val body = call.receive<AvailabilityRequest>()
+                            call.respond(service.setItemAvailability(call.principalOrThrow(), call.longParam("hotelId"), call.longParam("itemId"), body))
                         }
                         delete("/{itemId}") {
                             service.deleteFoodItem(call.principalOrThrow(), call.longParam("hotelId"), call.longParam("itemId"))

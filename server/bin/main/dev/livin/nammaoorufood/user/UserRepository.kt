@@ -1,57 +1,54 @@
 package dev.livin.nammaoorufood.user
 
-import java.sql.Connection
-import java.sql.ResultSet
-import java.sql.Statement
+import dev.livin.nammaoorufood.database.UsersTable
+import org.jetbrains.exposed.exceptions.ExposedSQLException
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import java.sql.SQLIntegrityConstraintViolationException
 
 interface UserRepository {
-    fun findByUsername(conn: Connection, username: String): User?
-    fun findById(conn: Connection, id: Long): User?
-    fun create(conn: Connection, username: String, passwordHash: String, role: Role, displayName: String, phone: String?): User
-    fun existsWithRole(conn: Connection, role: Role): Boolean
+    fun findByUsername(username: String): User?
+    fun findById(id: Long): User?
+    fun create(username: String, passwordHash: String, role: Role, displayName: String, phone: String?): User
+    fun existsWithRole(role: Role): Boolean
 }
 
-class JdbcUserRepository : UserRepository {
-    override fun findByUsername(conn: Connection, username: String): User? =
-        conn.prepareStatement("SELECT id, username, password_hash, role, display_name, active FROM users WHERE username = ?").use {
-            it.setString(1, username)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toUser() else null }
-        }
+class ExposedUserRepository : UserRepository {
+    override fun findByUsername(username: String): User? =
+        UsersTable.selectAll().where { UsersTable.username eq username }.limit(1).singleOrNull()?.toUser()
 
-    override fun findById(conn: Connection, id: Long): User? =
-        conn.prepareStatement("SELECT id, username, password_hash, role, display_name, active FROM users WHERE id = ?").use {
-            it.setLong(1, id)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toUser() else null }
-        }
+    override fun findById(id: Long): User? =
+        UsersTable.selectAll().where { UsersTable.id eq id }.limit(1).singleOrNull()?.toUser()
 
-    override fun create(conn: Connection, username: String, passwordHash: String, role: Role, displayName: String, phone: String?): User {
-        val id = conn.prepareStatement(
-            "INSERT INTO users (username, password_hash, role, display_name, phone) VALUES (?, ?, ?, ?, ?)",
-            Statement.RETURN_GENERATED_KEYS,
-        ).use {
-            it.setString(1, username)
-            it.setString(2, passwordHash)
-            it.setString(3, role.name)
-            it.setString(4, displayName)
-            it.setString(5, phone)
-            it.executeUpdate()
-            it.generatedKeys.use { keys -> keys.next(); keys.getLong(1) }
+    override fun create(username: String, passwordHash: String, role: Role, displayName: String, phone: String?): User {
+        val id = try {
+            UsersTable.insert {
+                it[UsersTable.username] = username
+                it[UsersTable.passwordHash] = passwordHash
+                it[UsersTable.role] = role
+                it[UsersTable.displayName] = displayName
+                it[UsersTable.phone] = phone
+            }[UsersTable.id]
+        } catch (failure: ExposedSQLException) {
+            val integrityFailure = generateSequence(failure.cause) { it.cause }
+                .filterIsInstance<SQLIntegrityConstraintViolationException>()
+                .firstOrNull()
+            if (integrityFailure != null) throw integrityFailure
+            throw failure
         }
         return User(id, username, passwordHash, role, displayName, active = true)
     }
 
-    override fun existsWithRole(conn: Connection, role: Role): Boolean =
-        conn.prepareStatement("SELECT 1 FROM users WHERE role = ? LIMIT 1").use {
-            it.setString(1, role.name)
-            it.executeQuery().use { rs -> rs.next() }
-        }
+    override fun existsWithRole(role: Role): Boolean =
+        UsersTable.selectAll().where { UsersTable.role eq role }.limit(1).singleOrNull() != null
 
-    private fun ResultSet.toUser() = User(
-        id = getLong("id"),
-        username = getString("username"),
-        passwordHash = getString("password_hash"),
-        role = Role.valueOf(getString("role")),
-        displayName = getString("display_name"),
-        active = getBoolean("active"),
+    private fun org.jetbrains.exposed.sql.ResultRow.toUser() = User(
+        id = this[UsersTable.id],
+        username = this[UsersTable.username],
+        passwordHash = this[UsersTable.passwordHash],
+        role = this[UsersTable.role],
+        displayName = this[UsersTable.displayName],
+        active = this[UsersTable.active],
     )
 }

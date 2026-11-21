@@ -24,7 +24,7 @@ class ForbiddenException(message: String = "Access denied") :
 
 fun Application.configureSerialization() {
     install(ContentNegotiation) {
-        json()
+        json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = true })
     }
 }
 

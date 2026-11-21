@@ -33,7 +33,7 @@ class OrderStateMachineTest {
 
 class OwnerOrderTest {
     private fun config() = AppConfig.fromEnv(
-        mapOf(
+        System.getenv() + mapOf(
             "APP_ENV" to "test",
             "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",
@@ -67,7 +67,7 @@ class OwnerOrderTest {
 
     private suspend fun ApplicationTestBuilder.fixture(): Fx {
         application { module(config()) }
-        val c = createClient { install(ContentNegotiation) { json() } }
+        val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")
         val customer = c.token("customer", "customer12345")

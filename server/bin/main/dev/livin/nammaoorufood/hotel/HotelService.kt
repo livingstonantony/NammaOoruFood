@@ -9,6 +9,7 @@ import dev.livin.nammaoorufood.plugins.NotFoundException
 import dev.livin.nammaoorufood.plugins.ValidationException
 import dev.livin.nammaoorufood.user.Role
 import dev.livin.nammaoorufood.user.UserDto
+import dev.livin.nammaoorufood.websocket.ServerEventBus
 import dev.livin.nammaoorufood.user.UserRepository
 import dev.livin.nammaoorufood.user.toDto
 import java.math.BigDecimal
@@ -95,11 +96,15 @@ class HotelService(
         }
     }
 
-    fun setAcceptingOrders(p: UserPrincipal, id: Long, accepting: Boolean): HotelDto = db.transaction { conn ->
-        val hotel = ownedHotel(conn, p, id)
-        if (accepting && hotel.approvalStatus != ApprovalStatus.APPROVED) throw ConflictException("Hotel is not approved yet")
-        hotels.setAcceptingOrders(conn, id, accepting)
-        hotels.findById(conn, id)!!.toDto(hotels.hoursFor(conn, listOf(id))[id].orEmpty())
+    fun setAcceptingOrders(p: UserPrincipal, id: Long, accepting: Boolean): HotelDto {
+        val dto = db.transaction { conn ->
+            val hotel = ownedHotel(conn, p, id)
+            if (accepting && hotel.approvalStatus != ApprovalStatus.APPROVED) throw ConflictException("Hotel is not approved yet")
+            hotels.setAcceptingOrders(conn, id, accepting)
+            hotels.findById(conn, id)!!.toDto(hotels.hoursFor(conn, listOf(id))[id].orEmpty())
+        }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun menu(p: UserPrincipal, hotelId: Long): MenuResponse = db.transaction { conn ->
@@ -107,7 +112,7 @@ class HotelService(
         val isManager = p.role == Role.ADMIN || hotel.ownerId == p.userId
         MenuResponse(
             categories = hotels.categories(conn, hotelId).map { it.toDto() },
-            items = hotels.foodItems(conn, hotelId).filter { isManager || it.available }.map { it.toDto() },
+            items = hotels.foodItems(conn, hotelId).filter { isManager || (it.available && (it.quantityAvailable == null || it.quantityAvailable > 0)) }.map { it.toDto() },
         )
     }
 
@@ -126,29 +131,39 @@ class HotelService(
 
     fun createFoodItem(p: UserPrincipal, hotelId: Long, req: FoodItemRequest): FoodItemDto {
         val v = validateFood(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available).toDto()
+            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable).toDto()
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun updateFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long, req: FoodItemRequest): FoodItemDto {
         val v = validateFood(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available)) {
+            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable)) {
                 throw NotFoundException("Food item not found")
             }
             hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
-    fun setItemAvailability(p: UserPrincipal, hotelId: Long, itemId: Long, available: Boolean): FoodItemDto = db.transaction { conn ->
-        ownedHotel(conn, p, hotelId)
-        if (!hotels.setItemAvailability(conn, hotelId, itemId, available)) throw NotFoundException("Food item not found")
-        hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
+    fun setItemAvailability(p: UserPrincipal, hotelId: Long, itemId: Long, req: AvailabilityRequest): FoodItemDto {
+        val dto = db.transaction { conn ->
+            ownedHotel(conn, p, hotelId)
+            val qty = if (req.clearQuantity) null else req.quantityAvailable
+            val updateQty = req.clearQuantity || req.quantityAvailable != null
+            if (!hotels.setItemAvailability(conn, hotelId, itemId, req.available, qty, updateQty)) throw NotFoundException("Food item not found")
+            hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
+        }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) = db.transaction { conn ->
@@ -158,11 +173,13 @@ class HotelService(
 
     fun setApproval(p: UserPrincipal, hotelId: Long, status: ApprovalStatus): HotelDto {
         requireRole(p, Role.ADMIN)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             hotels.findById(conn, hotelId) ?: throw NotFoundException("Hotel not found")
             hotels.setApproval(conn, hotelId, status)
             hotels.findById(conn, hotelId)!!.toDto(hotels.hoursFor(conn, listOf(hotelId))[hotelId].orEmpty())
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun createOwner(p: UserPrincipal, req: CreateOwnerRequest): UserDto {
@@ -175,7 +192,7 @@ class HotelService(
         val hash = hasher.hash(req.password)
         return db.transaction { conn ->
             try {
-                users.create(conn, username, hash, Role.HOTEL_OWNER, displayName, req.phone?.trim()?.takeIf { it.isNotEmpty() }).toDto()
+                users.create(username, hash, Role.HOTEL_OWNER, displayName, req.phone?.trim()?.takeIf { it.isNotEmpty() }).toDto()
             } catch (e: SQLIntegrityConstraintViolationException) {
                 throw ConflictException("Username is already taken")
             }

@@ -1,7 +1,19 @@
 package dev.livin.nammaoorufood.notification
 
+import dev.livin.nammaoorufood.database.NotificationsTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.SortOrder
 import kotlinx.serialization.Serializable
 import java.sql.Connection
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
@@ -31,58 +43,63 @@ interface NotificationRepository {
     fun deleteCreatedBefore(conn: Connection, cutoff: java.time.Instant): Int
 }
 
-class JdbcNotificationRepository : NotificationRepository {
+class ExposedNotificationRepository : NotificationRepository {
     override fun insert(conn: Connection, userId: Long, orderId: Long, type: NotificationType, title: String, message: String): Boolean =
-        conn.prepareStatement("INSERT IGNORE INTO notifications (user_id, order_id, type, title, message) VALUES (?, ?, ?, ?, ?)").use {
-            it.setLong(1, userId); it.setLong(2, orderId); it.setString(3, type.name); it.setString(4, title); it.setString(5, message)
-            it.executeUpdate() == 1
-        }
+        NotificationsTable.insertIgnore {
+            it[NotificationsTable.userId] = userId
+            it[NotificationsTable.orderId] = orderId
+            it[NotificationsTable.type] = type
+            it[NotificationsTable.title] = title
+            it[NotificationsTable.message] = message
+        }.insertedCount == 1
 
     override fun list(conn: Connection, userId: Long, unreadOnly: Boolean, limit: Int): List<NotificationDto> =
-        conn.prepareStatement(
-            "SELECT id, order_id, type, title, message, read_at IS NOT NULL AS is_read, created_at FROM notifications WHERE user_id = ?" +
-                (if (unreadOnly) " AND read_at IS NULL" else "") + " ORDER BY created_at DESC, id DESC LIMIT ?",
-        ).use {
-            it.setLong(1, userId); it.setInt(2, limit)
-            it.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) NotificationDto(
-                        rs.getLong("id"), rs.getLong("order_id"), NotificationType.valueOf(rs.getString("type")),
-                        rs.getString("title"), rs.getString("message"), rs.getBoolean("is_read"),
-                        rs.getObject("created_at", LocalDateTime::class.java).toInstant(ZoneOffset.UTC).toString(),
-                    ) else null
-                }.toList()
-            }
+        NotificationsTable.selectAll().where {
+            (NotificationsTable.userId eq userId) and
+                if (unreadOnly) NotificationsTable.readAt.isNull() else org.jetbrains.exposed.sql.Op.TRUE
         }
+            .orderBy(NotificationsTable.createdAt to SortOrder.DESC, NotificationsTable.id to SortOrder.DESC)
+            .limit(limit)
+            .map {
+                NotificationDto(
+                    it[NotificationsTable.id],
+                    it[NotificationsTable.orderId],
+                    it[NotificationsTable.type],
+                    it[NotificationsTable.title],
+                    it[NotificationsTable.message],
+                    it[NotificationsTable.readAt] != null,
+                    it[NotificationsTable.createdAt].toInstant(ZoneOffset.UTC).toString(),
+                )
+            }
 
     override fun unreadCount(conn: Connection, userId: Long): Int =
-        conn.prepareStatement("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL").use {
-            it.setLong(1, userId)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
+        NotificationsTable.selectAll()
+            .where { (NotificationsTable.userId eq userId) and NotificationsTable.readAt.isNull() }
+            .count().toInt()
 
     override fun markRead(conn: Connection, userId: Long, id: Long): Boolean {
-        conn.prepareStatement("UPDATE notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP(3)) WHERE id = ? AND user_id = ?").use {
-            it.setLong(1, id); it.setLong(2, userId)
-            it.executeUpdate()
+        NotificationsTable.update({
+            (NotificationsTable.id eq id) and
+                (NotificationsTable.userId eq userId) and
+                NotificationsTable.readAt.isNull()
+        }) {
+            it[readAt] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
         }
-        // Existence is checked separately because MySQL reports 0 affected rows when nothing changed.
-        return conn.prepareStatement("SELECT 1 FROM notifications WHERE id = ? AND user_id = ?").use {
-            it.setLong(1, id); it.setLong(2, userId)
-            it.executeQuery().use { rs -> rs.next() }
-        }
+        return NotificationsTable.selectAll().where {
+            (NotificationsTable.id eq id) and (NotificationsTable.userId eq userId)
+        }.limit(1).singleOrNull() != null
     }
 
     override fun markAllRead(conn: Connection, userId: Long) {
-        conn.prepareStatement("UPDATE notifications SET read_at = CURRENT_TIMESTAMP(3) WHERE user_id = ? AND read_at IS NULL").use {
-            it.setLong(1, userId)
-            it.executeUpdate()
+        NotificationsTable.update({
+            (NotificationsTable.userId eq userId) and NotificationsTable.readAt.isNull()
+        }) {
+            it[readAt] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
         }
     }
 
-    override fun deleteCreatedBefore(conn: Connection, cutoff: java.time.Instant): Int =
-        conn.prepareStatement("DELETE FROM notifications WHERE created_at < ?").use {
-            it.setObject(1, java.time.LocalDateTime.ofInstant(cutoff, java.time.ZoneOffset.UTC))
-            it.executeUpdate()
+    override fun deleteCreatedBefore(conn: Connection, cutoff: Instant): Int =
+        NotificationsTable.deleteWhere {
+            createdAt less LocalDateTime.ofInstant(cutoff, ZoneOffset.UTC)
         }
 }

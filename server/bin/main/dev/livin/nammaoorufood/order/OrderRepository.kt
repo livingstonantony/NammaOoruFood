@@ -1,9 +1,35 @@
 package dev.livin.nammaoorufood.order
 
+import dev.livin.nammaoorufood.database.HotelTokenCountersTable
+import dev.livin.nammaoorufood.database.HotelsTable
+import dev.livin.nammaoorufood.database.OrderItemsTable
+import dev.livin.nammaoorufood.database.OrdersTable
+import dev.livin.nammaoorufood.database.PickupTokensTable
+import dev.livin.nammaoorufood.database.UsersTable
+import dev.livin.nammaoorufood.user.Role
+import org.jetbrains.exposed.exceptions.ExposedSQLException
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.upsert
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.sum
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.leftJoin
 import java.math.BigDecimal
 import java.sql.Connection
-import java.sql.ResultSet
-import java.sql.Statement
+import java.sql.SQLIntegrityConstraintViolationException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -15,7 +41,6 @@ interface OrderRepository {
     fun findByIdempotencyKey(conn: Connection, customerId: Long, key: String): Order?
     fun listForCustomer(conn: Connection, customerId: Long, status: OrderStatus?, limit: Int, offset: Int): List<Order>
     fun countForCustomer(conn: Connection, customerId: Long, status: OrderStatus?): Int
-    // Locks only the order row so concurrent transitions on the same order are serialized.
     fun listActiveForCustomer(conn: Connection, customerId: Long): List<Order>
     fun listForAdmin(conn: Connection, filter: AdminOrderFilter, limit: Int, offset: Int): List<Order>
     fun countForAdmin(conn: Connection, filter: AdminOrderFilter): Int
@@ -29,212 +54,212 @@ interface OrderRepository {
     fun salesForOwner(conn: Connection, ownerId: Long, since: Instant): BigDecimal
 }
 
-class JdbcOrderRepository : OrderRepository {
-    private val select = """
-        SELECT o.id, o.customer_id, u.display_name AS customer_name, o.hotel_id, h.name AS hotel_name, o.status, o.total, o.note, o.created_at, o.updated_at,
-               t.token_number
-        FROM orders o
-        JOIN hotels h ON h.id = o.hotel_id
-        JOIN users u ON u.id = o.customer_id
-        LEFT JOIN pickup_tokens t ON t.order_id = o.id
-    """.trimIndent()
+private fun Instant.utc() = LocalDateTime.ofInstant(this, ZoneOffset.UTC)
 
-    override fun create(conn: Connection, customerId: Long, hotelId: Long, total: BigDecimal, note: String?, idempotencyKey: String?, items: List<NewOrderItem>): Long {
-        val orderId = conn.prepareStatement(
-            "INSERT INTO orders (customer_id, hotel_id, status, total, note, idempotency_key) VALUES (?, ?, 'PLACED', ?, ?, ?)",
-            Statement.RETURN_GENERATED_KEYS,
-        ).use {
-            it.setLong(1, customerId); it.setLong(2, hotelId); it.setBigDecimal(3, total)
-            it.setString(4, note); it.setString(5, idempotencyKey)
-            it.executeUpdate()
-            it.generatedKeys.use { k -> k.next(); k.getLong(1) }
+class ExposedOrderRepository : OrderRepository {
+    private val orderDetails = OrdersTable
+        .innerJoin(HotelsTable, { OrdersTable.hotelId }, { HotelsTable.id })
+        .innerJoin(UsersTable, { OrdersTable.customerId }, { UsersTable.id })
+        .leftJoin(PickupTokensTable, { OrdersTable.id }, { PickupTokensTable.orderId })
+
+    override fun create(
+        conn: Connection,
+        customerId: Long,
+        hotelId: Long,
+        total: BigDecimal,
+        note: String?,
+        idempotencyKey: String?,
+        items: List<NewOrderItem>,
+    ): Long {
+        val orderId = try {
+            OrdersTable.insert {
+                it[OrdersTable.customerId] = customerId
+                it[OrdersTable.hotelId] = hotelId
+                it[OrdersTable.status] = OrderStatus.PLACED
+                it[OrdersTable.total] = total
+                it[OrdersTable.note] = note
+                it[OrdersTable.idempotencyKey] = idempotencyKey
+            }[OrdersTable.id]
+        } catch (failure: ExposedSQLException) {
+            val integrityFailure = generateSequence(failure.cause) { it.cause }
+                .filterIsInstance<SQLIntegrityConstraintViolationException>()
+                .firstOrNull()
+            if (integrityFailure != null) throw integrityFailure
+            throw failure
         }
-        conn.prepareStatement("INSERT INTO order_items (order_id, food_item_id, item_name, unit_price, quantity, line_total) VALUES (?, ?, ?, ?, ?, ?)").use {
-            items.forEach { i ->
-                it.setLong(1, orderId); it.setLong(2, i.foodItemId); it.setString(3, i.name)
-                it.setBigDecimal(4, i.unitPrice); it.setInt(5, i.quantity); it.setBigDecimal(6, i.lineTotal)
-                it.addBatch()
+        items.forEach { item ->
+            OrderItemsTable.insert {
+                it[OrderItemsTable.orderId] = orderId
+                it[OrderItemsTable.foodItemId] = item.foodItemId
+                it[OrderItemsTable.itemName] = item.name
+                it[OrderItemsTable.unitPrice] = item.unitPrice
+                it[OrderItemsTable.quantity] = item.quantity
+                it[OrderItemsTable.lineTotal] = item.lineTotal
             }
-            it.executeBatch()
         }
         return orderId
     }
 
     override fun findById(conn: Connection, id: Long): Order? =
-        conn.prepareStatement("$select WHERE o.id = ?").use {
-            it.setLong(1, id)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toOrder(conn) else null }
-        }
+        orderDetails.selectAll().where { OrdersTable.id eq id }.limit(1).singleOrNull()?.toOrder()
 
     override fun findByIdempotencyKey(conn: Connection, customerId: Long, key: String): Order? =
-        conn.prepareStatement("$select WHERE o.customer_id = ? AND o.idempotency_key = ?").use {
-            it.setLong(1, customerId); it.setString(2, key)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toOrder(conn) else null }
-        }
+        orderDetails.selectAll().where {
+            (OrdersTable.customerId eq customerId) and (OrdersTable.idempotencyKey eq key)
+        }.limit(1).singleOrNull()?.toOrder()
 
     override fun listForCustomer(conn: Connection, customerId: Long, status: OrderStatus?, limit: Int, offset: Int): List<Order> =
-        conn.prepareStatement(
-            "$select WHERE o.customer_id = ?${if (status != null) " AND o.status = ?" else ""} ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?",
-        ).use {
-            var i = 1
-            it.setLong(i++, customerId)
-            if (status != null) it.setString(i++, status.name)
-            it.setInt(i++, limit); it.setInt(i, offset)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toOrder(conn) else null }.toList() }
+        orderDetails.selectAll().where {
+            (OrdersTable.customerId eq customerId) and (status?.let { OrdersTable.status eq it } ?: Op.TRUE)
         }
+            .orderBy(OrdersTable.createdAt to SortOrder.DESC, OrdersTable.id to SortOrder.DESC)
+            .limit(limit).offset(offset.toLong())
+            .map { it.toOrder() }
 
     override fun countForCustomer(conn: Connection, customerId: Long, status: OrderStatus?): Int =
-        conn.prepareStatement("SELECT COUNT(*) FROM orders WHERE customer_id = ?${if (status != null) " AND status = ?" else ""}").use {
-            it.setLong(1, customerId)
-            if (status != null) it.setString(2, status.name)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
+        OrdersTable.selectAll().where {
+            (OrdersTable.customerId eq customerId) and (status?.let { OrdersTable.status eq it } ?: Op.TRUE)
+        }.count().toInt()
 
     override fun listActiveForCustomer(conn: Connection, customerId: Long): List<Order> =
-        conn.prepareStatement("$select WHERE o.customer_id = ? AND o.status IN ('PLACED','ACCEPTED','PREPARING','READY_FOR_PICKUP') ORDER BY o.created_at DESC, o.id DESC").use {
-            it.setLong(1, customerId)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toOrder(conn) else null }.toList() }
+        orderDetails.selectAll().where {
+            (OrdersTable.customerId eq customerId) and
+                (OrdersTable.status inList listOf(OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP))
         }
+            .orderBy(OrdersTable.createdAt to SortOrder.DESC, OrdersTable.id to SortOrder.DESC)
+            .map { it.toOrder() }
 
-    private fun adminWhere(f: AdminOrderFilter): String = buildString {
-        append("1 = 1")
-        if (f.status != null) append(" AND o.status = ?")
-        if (f.hotelId != null) append(" AND o.hotel_id = ?")
-        if (f.customerId != null) append(" AND o.customer_id = ?")
-        if (f.from != null) append(" AND o.created_at >= ?")
-        if (f.to != null) append(" AND o.created_at < ?")
+    private fun adminConditions(filter: AdminOrderFilter): List<Op<Boolean>> = buildList {
+        filter.status?.let { add(OrdersTable.status eq it) }
+        filter.hotelId?.let { add(OrdersTable.hotelId eq it) }
+        filter.customerId?.let { add(OrdersTable.customerId eq it) }
+        filter.from?.let { add(OrdersTable.createdAt greaterEq it.utc()) }
+        filter.to?.let { add(OrdersTable.createdAt less it.utc()) }
     }
 
-    private fun java.sql.PreparedStatement.bindAdmin(f: AdminOrderFilter): Int {
-        var i = 1
-        f.status?.let { setString(i++, it.name) }
-        f.hotelId?.let { setLong(i++, it) }
-        f.customerId?.let { setLong(i++, it) }
-        f.from?.let { setObject(i++, LocalDateTime.ofInstant(it, ZoneOffset.UTC)) }
-        f.to?.let { setObject(i++, LocalDateTime.ofInstant(it, ZoneOffset.UTC)) }
-        return i
+    override fun listForAdmin(conn: Connection, filter: AdminOrderFilter, limit: Int, offset: Int): List<Order> {
+        val conditions = adminConditions(filter)
+        return orderDetails.selectAll().apply {
+            if (conditions.isNotEmpty()) where { conditions.reduce { left, right -> left and right } }
+        }
+            .orderBy(OrdersTable.createdAt to SortOrder.DESC, OrdersTable.id to SortOrder.DESC)
+            .limit(limit).offset(offset.toLong())
+            .map { it.toOrder() }
     }
 
-    override fun listForAdmin(conn: Connection, filter: AdminOrderFilter, limit: Int, offset: Int): List<Order> =
-        conn.prepareStatement("$select WHERE ${adminWhere(filter)} ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?").use {
-            var i = it.bindAdmin(filter)
-            it.setInt(i++, limit); it.setInt(i, offset)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toOrder(conn) else null }.toList() }
-        }
+    override fun countForAdmin(conn: Connection, filter: AdminOrderFilter): Int {
+        val conditions = adminConditions(filter)
+        return OrdersTable.selectAll().apply {
+            if (conditions.isNotEmpty()) where { conditions.reduce { left, right -> left and right } }
+        }.count().toInt()
+    }
 
-    override fun countForAdmin(conn: Connection, filter: AdminOrderFilter): Int =
-        conn.prepareStatement("SELECT COUNT(*) FROM orders o WHERE ${adminWhere(filter)}").use {
-            it.bindAdmin(filter)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
-
-    override fun findByIdForUpdate(conn: Connection, id: Long): Order? =
-        conn.prepareStatement("$select WHERE o.id = ? FOR UPDATE OF o").use {
-            it.setLong(1, id)
-            it.executeQuery().use { rs -> if (rs.next()) rs.toOrder(conn) else null }
-        }
+    override fun findByIdForUpdate(conn: Connection, id: Long): Order? {
+        val locked = OrdersTable.selectAll().where { OrdersTable.id eq id }.forUpdate().limit(1).singleOrNull()
+            ?: return null
+        return findById(conn, locked[OrdersTable.id])
+    }
 
     override fun updateStatus(conn: Connection, id: Long, status: OrderStatus) {
-        conn.prepareStatement("UPDATE orders SET status = ? WHERE id = ?").use {
-            it.setString(1, status.name); it.setLong(2, id)
-            it.executeUpdate()
-        }
+        OrdersTable.update({ OrdersTable.id eq id }) { it[OrdersTable.status] = status }
     }
 
-    // Atomic per-hotel/day increment; the upsert row lock serializes concurrent token requests.
     override fun nextTokenNumber(conn: Connection, hotelId: Long, day: LocalDate): Int {
-        conn.prepareStatement(
-            "INSERT INTO hotel_token_counters (hotel_id, token_date, last_token) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE last_token = last_token + 1",
-        ).use {
-            it.setLong(1, hotelId); it.setObject(2, day)
-            it.executeUpdate()
+        HotelTokenCountersTable.upsert(
+            onUpdate = {
+                it[HotelTokenCountersTable.lastToken] = HotelTokenCountersTable.lastToken + 1
+            },
+        ) {
+            it[HotelTokenCountersTable.hotelId] = hotelId
+            it[tokenDate] = day
+            it[lastToken] = 1
         }
-        return conn.prepareStatement("SELECT last_token FROM hotel_token_counters WHERE hotel_id = ? AND token_date = ?").use {
-            it.setLong(1, hotelId); it.setObject(2, day)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
+        return HotelTokenCountersTable.selectAll().where {
+            (HotelTokenCountersTable.hotelId eq hotelId) and (HotelTokenCountersTable.tokenDate eq day)
+        }.single()[HotelTokenCountersTable.lastToken]
     }
 
     override fun insertToken(conn: Connection, orderId: Long, hotelId: Long, day: LocalDate, number: Int) {
-        conn.prepareStatement("INSERT INTO pickup_tokens (order_id, hotel_id, token_date, token_number) VALUES (?, ?, ?, ?)").use {
-            it.setLong(1, orderId); it.setLong(2, hotelId); it.setObject(3, day); it.setInt(4, number)
-            it.executeUpdate()
+        PickupTokensTable.insert {
+            it[PickupTokensTable.orderId] = orderId
+            it[PickupTokensTable.hotelId] = hotelId
+            it[PickupTokensTable.tokenDate] = day
+            it[PickupTokensTable.tokenNumber] = number
         }
     }
 
-    private fun ownerFilter(hotelId: Long?, statuses: Collection<OrderStatus>) =
-        "h.owner_id = ?" + (if (hotelId != null) " AND o.hotel_id = ?" else "") +
-            (if (statuses.isNotEmpty()) " AND o.status IN (${statuses.joinToString(",") { "?" }})" else "")
-
-    private fun java.sql.PreparedStatement.bindOwnerFilter(ownerId: Long, hotelId: Long?, statuses: Collection<OrderStatus>): Int {
-        var i = 1
-        setLong(i++, ownerId)
-        if (hotelId != null) setLong(i++, hotelId)
-        statuses.forEach { setString(i++, it.name) }
-        return i
+    private fun ownerConditions(ownerId: Long, hotelId: Long?, statuses: Collection<OrderStatus>): List<Op<Boolean>> = buildList {
+        add(HotelsTable.ownerId eq ownerId)
+        hotelId?.let { add(OrdersTable.hotelId eq it) }
+        if (statuses.isNotEmpty()) add(OrdersTable.status inList statuses)
     }
 
-    override fun listForOwner(conn: Connection, ownerId: Long, hotelId: Long?, statuses: Collection<OrderStatus>, limit: Int, offset: Int): List<Order> =
-        conn.prepareStatement("$select WHERE ${ownerFilter(hotelId, statuses)} ORDER BY o.created_at DESC, o.id DESC LIMIT ? OFFSET ?").use {
-            var i = it.bindOwnerFilter(ownerId, hotelId, statuses)
-            it.setInt(i++, limit); it.setInt(i, offset)
-            it.executeQuery().use { rs -> generateSequence { if (rs.next()) rs.toOrder(conn) else null }.toList() }
-        }
+    override fun listForOwner(
+        conn: Connection,
+        ownerId: Long,
+        hotelId: Long?,
+        statuses: Collection<OrderStatus>,
+        limit: Int,
+        offset: Int,
+    ): List<Order> =
+        orderDetails.selectAll().where { ownerConditions(ownerId, hotelId, statuses).reduce { left, right -> left and right } }
+            .orderBy(OrdersTable.createdAt to SortOrder.DESC, OrdersTable.id to SortOrder.DESC)
+            .limit(limit).offset(offset.toLong())
+            .map { it.toOrder() }
 
     override fun countForOwner(conn: Connection, ownerId: Long, hotelId: Long?, statuses: Collection<OrderStatus>): Int =
-        conn.prepareStatement("SELECT COUNT(*) FROM orders o JOIN hotels h ON h.id = o.hotel_id WHERE ${ownerFilter(hotelId, statuses)}").use {
-            it.bindOwnerFilter(ownerId, hotelId, statuses)
-            it.executeQuery().use { rs -> rs.next(); rs.getInt(1) }
-        }
+        OrdersTable.innerJoin(HotelsTable, { OrdersTable.hotelId }, { HotelsTable.id })
+            .selectAll()
+            .where { ownerConditions(ownerId, hotelId, statuses).reduce { left, right -> left and right } }
+            .count().toInt()
 
-    // Live statuses are counted regardless of age; terminal statuses only since [since].
     override fun statusCountsForOwner(conn: Connection, ownerId: Long, since: Instant): Map<OrderStatus, Int> =
-        conn.prepareStatement(
-            """SELECT o.status, COUNT(*) FROM orders o JOIN hotels h ON h.id = o.hotel_id
-               WHERE h.owner_id = ? AND (o.status IN ('PLACED','ACCEPTED','PREPARING','READY_FOR_PICKUP') OR o.updated_at >= ?)
-               GROUP BY o.status""",
-        ).use {
-            it.setLong(1, ownerId); it.setObject(2, LocalDateTime.ofInstant(since, ZoneOffset.UTC))
-            it.executeQuery().use { rs ->
-                val out = mutableMapOf<OrderStatus, Int>()
-                while (rs.next()) out[OrderStatus.valueOf(rs.getString(1))] = rs.getInt(2)
-                out
+        OrdersTable.innerJoin(HotelsTable, { OrdersTable.hotelId }, { HotelsTable.id })
+            .select(OrdersTable.status, OrdersTable.id.count())
+            .where {
+                (HotelsTable.ownerId eq ownerId) and
+                    ((OrdersTable.status inList listOf(OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP)) or
+                        (OrdersTable.updatedAt greaterEq since.utc()))
             }
-        }
+            .groupBy(OrdersTable.status)
+            .associate { it[OrdersTable.status] to it[OrdersTable.id.count()].toInt() }
 
     override fun salesForOwner(conn: Connection, ownerId: Long, since: Instant): BigDecimal =
-        conn.prepareStatement(
-            "SELECT COALESCE(SUM(o.total), 0) FROM orders o JOIN hotels h ON h.id = o.hotel_id WHERE h.owner_id = ? AND o.status = 'COMPLETED' AND o.updated_at >= ?",
-        ).use {
-            it.setLong(1, ownerId); it.setObject(2, LocalDateTime.ofInstant(since, ZoneOffset.UTC))
-            it.executeQuery().use { rs -> rs.next(); rs.getBigDecimal(1) }
-        }
-
-    private fun loadItems(conn: Connection, orderId: Long): List<OrderItem> =
-        conn.prepareStatement("SELECT food_item_id, item_name, unit_price, quantity, line_total FROM order_items WHERE order_id = ? ORDER BY id").use {
-            it.setLong(1, orderId)
-            it.executeQuery().use { rs ->
-                generateSequence {
-                    if (rs.next()) OrderItem(rs.getObject("food_item_id") as Long?, rs.getString("item_name"), rs.getBigDecimal("unit_price"), rs.getInt("quantity"), rs.getBigDecimal("line_total")) else null
-                }.toList()
+        OrdersTable.innerJoin(HotelsTable, { OrdersTable.hotelId }, { HotelsTable.id })
+            .select(OrdersTable.total.sum())
+            .where {
+                (HotelsTable.ownerId eq ownerId) and
+                    (OrdersTable.status eq OrderStatus.COMPLETED) and
+                    (OrdersTable.updatedAt greaterEq since.utc())
             }
-        }
+            .single()[OrdersTable.total.sum()] ?: BigDecimal.ZERO
 
-    private fun ResultSet.toOrder(conn: Connection): Order {
-        val id = getLong("id")
+    private fun ResultRow.toOrder(): Order {
+        val orderId = this[OrdersTable.id]
+        val items = OrderItemsTable.selectAll().where { OrderItemsTable.orderId eq orderId }
+            .orderBy(OrderItemsTable.id to SortOrder.ASC)
+            .map {
+                OrderItem(
+                    it[OrderItemsTable.foodItemId],
+                    it[OrderItemsTable.itemName],
+                    it[OrderItemsTable.unitPrice],
+                    it[OrderItemsTable.quantity],
+                    it[OrderItemsTable.lineTotal],
+                )
+            }
         return Order(
-            id = id,
-            customerId = getLong("customer_id"),
-            customerName = getString("customer_name"),
-            hotelId = getLong("hotel_id"),
-            hotelName = getString("hotel_name"),
-            status = OrderStatus.valueOf(getString("status")),
-            total = getBigDecimal("total"),
-            note = getString("note"),
-            items = loadItems(conn, id),
-            pickupToken = getObject("token_number") as Int?,
-            createdAt = getObject("created_at", LocalDateTime::class.java).toInstant(ZoneOffset.UTC),
-            updatedAt = getObject("updated_at", LocalDateTime::class.java).toInstant(ZoneOffset.UTC),
+            id = orderId,
+            customerId = this[OrdersTable.customerId],
+            customerName = this[UsersTable.displayName],
+            hotelId = this[OrdersTable.hotelId],
+            hotelName = this[HotelsTable.name],
+            status = this[OrdersTable.status],
+            total = this[OrdersTable.total],
+            note = this[OrdersTable.note],
+            items = items,
+            pickupToken = this.getOrNull(PickupTokensTable.tokenNumber),
+            createdAt = this[OrdersTable.createdAt].toInstant(ZoneOffset.UTC),
+            updatedAt = this[OrdersTable.updatedAt].toInstant(ZoneOffset.UTC),
         )
     }
 }

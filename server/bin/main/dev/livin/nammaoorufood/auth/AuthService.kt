@@ -48,7 +48,7 @@ class AuthService(
         val hash = hasher.hash(req.password)
         return db.transaction { conn ->
             val user = try {
-                users.create(conn, username, hash, Role.CUSTOMER, displayName, phone)
+                users.create(username, hash, Role.CUSTOMER, displayName, phone)
             } catch (e: SQLIntegrityConstraintViolationException) {
                 throw ConflictException("Username is already taken")
             }
@@ -58,7 +58,7 @@ class AuthService(
 
     fun login(req: LoginRequest): AuthResponse {
         val username = req.username.trim().lowercase()
-        val user = db.transaction { users.findByUsername(it, username) }
+        val user = db.transaction { users.findByUsername(username) }
         val valid = hasher.verify(req.password, user?.passwordHash ?: dummyHash)
         if (user == null || !valid || !user.active) throw UnauthorizedException("Invalid username or password")
         return db.transaction { startSession(it, user) }
@@ -69,7 +69,7 @@ class AuthService(
         return db.transaction { conn ->
             val now = clock.instant()
             val session = sessions.findActiveByRefreshHash(conn, oldHash, now) ?: throw UnauthorizedException("Session expired")
-            val user = users.findById(conn, session.userId)?.takeIf { it.active }
+            val user = users.findById(session.userId)?.takeIf { it.active }
                 ?: run {
                     sessions.revoke(conn, session.id, now)
                     throw UnauthorizedException("Session expired")
@@ -93,7 +93,7 @@ class AuthService(
     fun isSessionActive(sessionId: Long): Boolean =
         db.transaction { sessions.isActive(it, sessionId, clock.instant()) }
 
-    fun currentUser(userId: Long): User? = db.transaction { users.findById(it, userId) }?.takeIf { it.active }
+    fun currentUser(userId: Long): User? = db.transaction { users.findById(userId) }?.takeIf { it.active }
 
     private fun startSession(conn: java.sql.Connection, user: User): AuthResponse {
         val now = clock.instant()
