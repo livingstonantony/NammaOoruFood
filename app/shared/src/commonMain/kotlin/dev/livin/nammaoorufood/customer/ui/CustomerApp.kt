@@ -30,6 +30,7 @@ sealed interface Route {
     data class Menu(val hotelId: Long) : Route
     data object Cart : Route
     data class OrderDetail(val orderId: Long) : Route
+    data object Notifications : Route
 }
 
 class CustomerNavigator {
@@ -55,19 +56,19 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
     val nav = remember { CustomerNavigator() }
     val top = nav.top
     val notifications: NotificationsViewModel = koinViewModel(key = "${user.id}-notifications")
-    val unread by notifications.state.collectAsStateWithLifecycle()
+    val notifState by notifications.state.collectAsStateWithLifecycle()
+    val unreadCount = notifState.unreadCount
+
     LaunchedEffect(Unit) {
         while (true) {
             notifications.onIntent(NotificationsIntent.Refresh)
-            delay(
-                POLL_MILLIS.milliseconds
-            )
+            delay(POLL_MILLIS.milliseconds)
         }
     }
 
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = top != null || nav.tab != Tab.Home, // You can toggle this dynamically
+        isBackEnabled = top != null || nav.tab != Tab.Home,
         onBackCompleted = {
             if (top != null) nav.pop() else nav.tab = Tab.Home
         }
@@ -95,60 +96,53 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            unread.unread.firstOrNull()?.let { n ->
-                NotificationBanner(
-                    n,
-                    onView = {
-                        notifications.onIntent(NotificationsIntent.Dismiss(n.id)); n.orderId?.let(
-                        nav::showOrder
-                    )
+            when (top) {
+                is Route.Menu -> MenuScreen(
+                    vm = koinViewModel(key = "${user.id}-menu-${top.hotelId}") {
+                        parametersOf(top.hotelId)
                     },
-                    onDismiss = { notifications.onIntent(NotificationsIntent.Dismiss(n.id)) },
+                    onBack = nav::pop,
+                    onOpenCart = { nav.push(Route.Cart) },
                 )
-            }
-            Box(Modifier.weight(1f)) {
-                when (top) {
-                    is Route.Menu -> MenuScreen(
-                        vm = koinViewModel(key = "${user.id}-menu-${top.hotelId}") {
-                            parametersOf(
-                                top.hotelId
-                            )
-                        },
-                        onBack = nav::pop,
-                        onOpenCart = { nav.push(Route.Cart) },
+
+                Route.Cart -> CartScreen(
+                    koinViewModel(key = "${user.id}-cart"),
+                    onBack = nav::pop,
+                    onOrderPlaced = nav::showOrder
+                )
+
+                is Route.OrderDetail -> OrderDetailScreen(
+                    vm = koinViewModel(key = "${user.id}-order-${top.orderId}") {
+                        parametersOf(top.orderId)
+                    },
+                    onBack = nav::pop,
+                )
+
+                Route.Notifications -> NotificationsScreen(
+                    vm = notifications,
+                    onBack = nav::pop,
+                    onOpenOrder = { nav.push(Route.OrderDetail(it)) },
+                )
+
+                null -> when (nav.tab) {
+                    Tab.Home -> HotelListScreen(
+                        vm = koinViewModel(key = "${user.id}-hotels"),
+                        unreadCount = unreadCount,
+                        onOpenNotifications = { nav.push(Route.Notifications) },
+                        onOpenHotel = { nav.push(Route.Menu(it.id)) },
                     )
 
-                    Route.Cart -> CartScreen(
-                        koinViewModel(key = "${user.id}-cart"),
-                        onBack = nav::pop,
-                        onOrderPlaced = nav::showOrder
+                    Tab.Orders -> OrdersScreen(
+                        koinViewModel(key = "${user.id}-orders"),
+                        onOpenOrder = { nav.push(Route.OrderDetail(it)) },
                     )
 
-                    is Route.OrderDetail -> OrderDetailScreen(
-                        vm = koinViewModel(key = "${user.id}-order-${top.orderId}") {
-                            parametersOf(
-                                top.orderId
-                            )
-                        },
-                        onBack = nav::pop,
-                    )
-
-                    null -> when (nav.tab) {
-                        Tab.Home -> HotelListScreen(
-                            vm = koinViewModel(key = "${user.id}-hotels"),
-                            onOpenHotel = { nav.push(Route.Menu(it.id)) })
-
-                        Tab.Orders -> OrdersScreen(
-                            koinViewModel(key = "${user.id}-orders"),
-                            onOpenOrder = { nav.push(Route.OrderDetail(it)) })
-
-                        Tab.Profile -> ProfileScreen(user, session)
-                    }
+                    Tab.Profile -> ProfileScreen(user, session)
                 }
             }
         }
@@ -171,26 +165,6 @@ fun ProfileScreen(user: UserDto, session: SessionManager) {
                 onClick = { loggingOut = true; scope.launch { session.logout() } },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("Log out") }
-        }
-    }
-}
-
-@Composable
-private fun NotificationBanner(n: NotificationDto, onView: () -> Unit, onDismiss: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(n.title, style = MaterialTheme.typography.titleSmall)
-                Text(n.message, style = MaterialTheme.typography.bodyMedium)
-            }
-            if (n.orderId != null) TextButton(onClick = onView) { Text("View") }
-            TextButton(onClick = onDismiss) { Text("Dismiss") }
         }
     }
 }

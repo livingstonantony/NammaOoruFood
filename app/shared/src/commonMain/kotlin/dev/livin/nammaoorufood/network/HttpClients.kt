@@ -8,6 +8,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.serialization.kotlinx.json.json
@@ -19,6 +20,7 @@ private fun HttpClientConfig<*>.common(baseUrl: String) {
     expectSuccess = false
     install(ContentNegotiation) { json(ApiJson) }
     install(HttpTimeout) { requestTimeoutMillis = 15_000; connectTimeoutMillis = 10_000 }
+    install(WebSockets)
     defaultRequest { url(baseUrl.trimEnd('/') + "/") }
 }
 

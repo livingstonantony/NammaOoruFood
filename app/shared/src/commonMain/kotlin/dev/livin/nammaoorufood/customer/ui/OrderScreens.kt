@@ -202,3 +202,105 @@ private fun CancelDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) = AlertDi
     confirmButton = { TextButton(onClick = { onDismiss(); onConfirm() }) { Text("Cancel order") } },
     dismissButton = { TextButton(onClick = onDismiss) { Text("Keep order") } },
 )
+
+@Composable
+fun NotificationsScreen(
+    vm: NotificationsViewModel,
+    onBack: () -> Unit,
+    onOpenOrder: (Long) -> Unit,
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ScreenTitle("Notifications", onBack, modifier = Modifier.weight(1f))
+            if (state.items.any { !it.read }) {
+                TextButton(
+                    onClick = { vm.onIntent(NotificationsIntent.MarkAllRead) },
+                    modifier = Modifier.padding(end = 8.dp),
+                ) {
+                    Text("Mark all read")
+                }
+            }
+        }
+        if (state.items.isEmpty()) {
+            EmptyState("No notifications yet.")
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(state.items, key = { it.id }) { n ->
+                    AppCard(
+                        onClick = {
+                            if (!n.read) vm.onIntent(NotificationsIntent.Dismiss(n.id))
+                            if (n.orderId != null) onOpenOrder(n.orderId)
+                        }
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = n.hotelName ?: "Hotel Update",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            n.orderStatus?.let { statusName ->
+                                runCatching { OrderStatus.valueOf(statusName) }.getOrNull()?.let { status ->
+                                    StatusChip(status)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = n.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = n.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (n.pickupToken != null) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Text(
+                                        text = "Token #${n.pickupToken}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            } else {
+                                Spacer(Modifier.width(1.dp))
+                            }
+                            if (!n.read) {
+                                TextButton(onClick = { vm.onIntent(NotificationsIntent.Dismiss(n.id)) }) {
+                                    Text("Dismiss")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

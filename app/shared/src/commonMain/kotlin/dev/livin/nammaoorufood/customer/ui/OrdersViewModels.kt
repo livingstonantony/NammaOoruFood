@@ -6,11 +6,14 @@ import dev.livin.nammaoorufood.auth.ApiResult
 import dev.livin.nammaoorufood.customer.data.Load
 import dev.livin.nammaoorufood.customer.data.ShopRepository
 import dev.livin.nammaoorufood.customer.data.errorMessage
+import dev.livin.nammaoorufood.network.LiveEventBus
 import dev.livin.nammaoorufood.network.NotificationDto
 import dev.livin.nammaoorufood.network.OrderDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -20,11 +23,23 @@ sealed interface OrdersIntent {
     data object Refresh : OrdersIntent
 }
 
-class OrdersViewModel(private val repo: ShopRepository) : ViewModel() {
+class OrdersViewModel(
+    private val repo: ShopRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OrdersState())
     val state: StateFlow<OrdersState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OrdersIntent) {
         when (intent) {
@@ -60,11 +75,24 @@ sealed interface OrderDetailIntent {
     data object Cancel : OrderDetailIntent
 }
 
-class OrderDetailViewModel(private val orderId: Long, private val repo: ShopRepository) : ViewModel() {
+class OrderDetailViewModel(
+    private val orderId: Long,
+    private val repo: ShopRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OrderDetailState())
     val state: StateFlow<OrderDetailState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED" && (event.id == null || event.id == orderId)) {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OrderDetailIntent) {
         when (intent) {
@@ -97,34 +125,74 @@ class OrderDetailViewModel(private val orderId: Long, private val repo: ShopRepo
     }
 }
 
-data class NotificationsState(val unread: List<NotificationDto> = emptyList())
+data class NotificationsState(
+    val items: List<NotificationDto> = emptyList(),
+    val unreadCount: Int = 0,
+)
 
 sealed interface NotificationsIntent {
     data object Refresh : NotificationsIntent
     data class Dismiss(val id: Long) : NotificationsIntent
+    data object MarkAllRead : NotificationsIntent
 }
 
-/** Polls unread notifications; the backend remains the source of truth for order status. */
-class NotificationsViewModel(private val repo: ShopRepository) : ViewModel() {
+/** Listens to live events for order status updates; backend remains source of truth. */
+class NotificationsViewModel(
+    private val repo: ShopRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(NotificationsState())
     val state: StateFlow<NotificationsState> = _state.asStateFlow()
+
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: NotificationsIntent) {
         when (intent) {
             NotificationsIntent.Refresh -> refresh()
             is NotificationsIntent.Dismiss -> dismiss(intent.id)
+            NotificationsIntent.MarkAllRead -> markAllRead()
         }
     }
 
     private fun refresh() {
         viewModelScope.launch {
-            val result = repo.unreadNotifications()
-            if (result is ApiResult.Success) _state.value = NotificationsState(result.value.items)
+            val result = repo.notifications(unreadOnly = false)
+            if (result is ApiResult.Success) {
+                _state.value = NotificationsState(
+                    items = result.value.items,
+                    unreadCount = result.value.unreadCount,
+                )
+            }
         }
     }
 
     private fun dismiss(id: Long) {
-        _state.update { s -> s.copy(unread = s.unread.filterNot { it.id == id }) }
-        viewModelScope.launch { repo.markNotificationRead(id) }
+        _state.update { s ->
+            val updated = s.items.map { if (it.id == id) it.copy(read = true) else it }
+            s.copy(items = updated, unreadCount = updated.count { !it.read })
+        }
+        viewModelScope.launch {
+            repo.markNotificationRead(id)
+            refresh()
+        }
+    }
+
+    private fun markAllRead() {
+        _state.update { s ->
+            s.copy(items = s.items.map { it.copy(read = true) }, unreadCount = 0)
+        }
+        viewModelScope.launch {
+            repo.markAllNotificationsRead()
+            refresh()
+        }
     }
 }

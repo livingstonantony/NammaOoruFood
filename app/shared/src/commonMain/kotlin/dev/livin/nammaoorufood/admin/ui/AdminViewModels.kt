@@ -11,6 +11,8 @@ import dev.livin.nammaoorufood.network.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -38,11 +40,23 @@ sealed interface AdminOverviewIntent {
     data class Refresh(val replace: Boolean = false) : AdminOverviewIntent
 }
 
-class AdminOverviewViewModel(private val repo: AdminRepository) : ViewModel() {
+class AdminOverviewViewModel(
+    private val repo: AdminRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OverviewState())
     val state: StateFlow<OverviewState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED" || event.type == "HOTEL_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: AdminOverviewIntent) {
         when (intent) {
@@ -87,11 +101,23 @@ sealed interface AdminHotelsIntent {
     data class SetApproval(val hotelId: Long, val status: String) : AdminHotelsIntent
 }
 
-class AdminHotelsViewModel(private val repo: AdminRepository) : ViewModel() {
+class AdminHotelsViewModel(
+    private val repo: AdminRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(AdminHotelsState())
     val state: StateFlow<AdminHotelsState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "HOTEL_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: AdminHotelsIntent) {
         when (intent) {
@@ -221,11 +247,23 @@ sealed interface AdminOrdersIntent {
     data object Refresh : AdminOrdersIntent
 }
 
-class AdminOrdersViewModel(private val repo: AdminRepository) : ViewModel() {
+class AdminOrdersViewModel(
+    private val repo: AdminRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(AdminOrdersState())
     val state: StateFlow<AdminOrdersState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: AdminOrdersIntent) {
         when (intent) {

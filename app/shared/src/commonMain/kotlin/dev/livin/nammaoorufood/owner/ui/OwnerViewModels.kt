@@ -11,6 +11,8 @@ import dev.livin.nammaoorufood.owner.data.OwnerRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -33,11 +35,23 @@ sealed interface OwnerHotelIntent {
     data class SetAccepting(val id: Long, val accepting: Boolean) : OwnerHotelIntent
 }
 
-class OwnerHotelViewModel(private val repo: OwnerRepository) : ViewModel() {
+class OwnerHotelViewModel(
+    private val repo: OwnerRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OwnerHotelState())
     val state: StateFlow<OwnerHotelState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "HOTEL_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OwnerHotelIntent) {
         when (intent) {
@@ -108,11 +122,23 @@ sealed interface OwnerDashboardIntent {
     data object Refresh : OwnerDashboardIntent
 }
 
-class OwnerDashboardViewModel(private val repo: OwnerRepository) : ViewModel() {
+class OwnerDashboardViewModel(
+    private val repo: OwnerRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OwnerDashboardState())
     val state: StateFlow<OwnerDashboardState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED" || event.type == "HOTEL_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OwnerDashboardIntent) {
         when (intent) {
@@ -161,11 +187,24 @@ sealed interface OwnerOrdersIntent {
     data object DismissMessage : OwnerOrdersIntent
 }
 
-class OwnerOrdersViewModel(private val hotelId: Long, private val repo: OwnerRepository) : ViewModel() {
+class OwnerOrdersViewModel(
+    private val hotelId: Long,
+    private val repo: OwnerRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OwnerOrdersState())
     val state: StateFlow<OwnerOrdersState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "ORDER_UPDATED") {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OwnerOrdersIntent) {
         when (intent) {
@@ -240,11 +279,24 @@ sealed interface OwnerMenuIntent {
     data class Delete(val itemId: Long) : OwnerMenuIntent
 }
 
-class OwnerMenuViewModel(private val hotelId: Long, private val repo: OwnerRepository) : ViewModel() {
+class OwnerMenuViewModel(
+    private val hotelId: Long,
+    private val repo: OwnerRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(OwnerMenuState())
     val state: StateFlow<OwnerMenuState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        eventBus.events
+            .onEach { event ->
+                if ((event.type == "MENU_UPDATED" || event.type == "ORDER_UPDATED") && (event.id == null || event.id == hotelId)) {
+                    refresh()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: OwnerMenuIntent) {
         when (intent) {

@@ -76,6 +76,9 @@ data class OrderPage(val items: List<OrderDto>, val page: Int, val pageSize: Int
 data class NotificationDto(
     val id: Long,
     val orderId: Long? = null,
+    val hotelName: String? = null,
+    val orderStatus: String? = null,
+    val pickupToken: Int? = null,
     val type: String,
     val title: String,
     val message: String,

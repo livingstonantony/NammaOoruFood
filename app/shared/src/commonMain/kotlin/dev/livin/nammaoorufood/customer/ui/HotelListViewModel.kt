@@ -7,10 +7,13 @@ import dev.livin.nammaoorufood.customer.data.Load
 import dev.livin.nammaoorufood.customer.data.ShopRepository
 import dev.livin.nammaoorufood.customer.data.errorMessage
 import dev.livin.nammaoorufood.network.HotelDto
+import dev.livin.nammaoorufood.network.LiveEventBus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,12 +29,24 @@ sealed interface HotelListIntent {
     data object Refresh : HotelListIntent
 }
 
-class HotelListViewModel(private val repo: ShopRepository) : ViewModel() {
+class HotelListViewModel(
+    private val repo: ShopRepository,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(HotelListState())
     val state: StateFlow<HotelListState> = _state.asStateFlow()
     private var job: Job? = null
 
-    init { load() }
+    init {
+        load()
+        eventBus.events
+            .onEach { event ->
+                if (event.type == "HOTEL_UPDATED" || event.type == "MENU_UPDATED") {
+                    load()
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onIntent(intent: HotelListIntent) {
         when (intent) {

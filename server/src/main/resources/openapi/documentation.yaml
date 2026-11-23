@@ -31,7 +31,7 @@ tags:
 paths:
   /health:
     get:
-      summary: Health check endpoint
+      summary: Health check endpoint | Public
       description: Returns liveness status of the server application.
       security: []
       responses:
@@ -44,7 +44,7 @@ paths:
   /ws/events:
     get:
       tags: [WebSockets]
-      summary: Real-time event bus WebSocket connection
+      summary: Real-time event bus WebSocket connection | Public
       description: |
         Connect via WebSocket (`ws://<host>:8080/ws/events` or `wss://<host>:8080/ws/events`).
         
@@ -67,7 +67,7 @@ paths:
   /auth/register:
     post:
       tags: [Auth]
-      summary: Register a customer account
+      summary: Register a customer account | Public
       description: Registers a new customer account. Rate limited per IP.
       security: []
       requestBody:
@@ -92,7 +92,7 @@ paths:
   /auth/login:
     post:
       tags: [Auth]
-      summary: Sign in with username and password
+      summary: Sign in with username and password | Public
       description: Authenticates user credentials and returns JWT access and refresh tokens. Rate limited.
       security: []
       requestBody:
@@ -115,7 +115,7 @@ paths:
   /auth/refresh:
     post:
       tags: [Auth]
-      summary: Refresh JWT access token
+      summary: Refresh JWT access token | Public
       description: Exchanges a valid refresh token for a new pair of access and refresh tokens. Invalidates the old refresh token.
       security: []
       requestBody:
@@ -136,7 +136,7 @@ paths:
   /auth/logout:
     post:
       tags: [Auth]
-      summary: Logout user session
+      summary: Logout user session | Public
       description: Revokes the session associated with the provided refresh token.
       security: []
       requestBody:
@@ -151,7 +151,7 @@ paths:
   /auth/me:
     get:
       tags: [Auth]
-      summary: Get current user profile
+      summary: Get current user profile | Authenticated User
       description: Returns information about the currently authenticated user.
       responses:
         '200':
@@ -165,7 +165,7 @@ paths:
   /hotels:
     get:
       tags: [Hotels]
-      summary: List approved hotels
+      summary: List approved hotels | Authenticated User
       description: Retrieves a paginated list of approved hotels. Optional text search and open-status filter.
       parameters:
         - name: q
@@ -201,7 +201,8 @@ paths:
   /hotels/{hotelId}:
     get:
       tags: [Hotels]
-      summary: Get hotel details
+      summary: Get hotel details | Authenticated User
+      description: Retrieves detailed information for a specific hotel.
       parameters:
         - $ref: '#/components/parameters/hotelId'
       responses:
@@ -216,7 +217,7 @@ paths:
   /hotels/{hotelId}/menu:
     get:
       tags: [Menu]
-      summary: Get menu for a hotel
+      summary: Get menu for a hotel | Authenticated User
       description: Returns all categories and food items for the specified hotel.
       parameters:
         - $ref: '#/components/parameters/hotelId'
@@ -232,8 +233,8 @@ paths:
   /hotels/{hotelId}/menu/categories:
     post:
       tags: [Menu]
-      summary: Create menu category
-      description: Creates a new menu category for a hotel (Hotel Owner or Admin).
+      summary: Create menu category | Hotel Owner / Admin
+      description: Creates a new menu category for a hotel.
       parameters:
         - $ref: '#/components/parameters/hotelId'
       requestBody:
@@ -254,8 +255,8 @@ paths:
   /hotels/{hotelId}/menu/items:
     post:
       tags: [Menu]
-      summary: Create food item
-      description: Adds a food item to a hotel's menu (Hotel Owner or Admin).
+      summary: Create food item | Hotel Owner / Admin
+      description: Adds a food item to a hotel's menu.
       parameters:
         - $ref: '#/components/parameters/hotelId'
       requestBody:
@@ -276,8 +277,8 @@ paths:
   /hotels/{hotelId}/menu/items/{itemId}:
     put:
       tags: [Menu]
-      summary: Update food item
-      description: Updates food item details, price, category, or inventory tracking (Hotel Owner or Admin).
+      summary: Update food item | Hotel Owner / Admin
+      description: Updates food item details, price, category, or inventory tracking.
       parameters:
         - $ref: '#/components/parameters/hotelId'
         - $ref: '#/components/parameters/itemId'
@@ -300,8 +301,8 @@ paths:
           $ref: '#/components/responses/Error'
     delete:
       tags: [Menu]
-      summary: Delete food item
-      description: Removes a food item from the menu (Past order snapshots retain historical item details).
+      summary: Delete food item | Hotel Owner / Admin
+      description: Removes a food item from the menu. Past order snapshots retain historical item details.
       parameters:
         - $ref: '#/components/parameters/hotelId'
         - $ref: '#/components/parameters/itemId'
@@ -315,7 +316,7 @@ paths:
   /hotels/{hotelId}/menu/items/{itemId}/availability:
     patch:
       tags: [Menu]
-      summary: Update item availability or stock
+      summary: Update item availability or stock | Hotel Owner / Admin
       description: Updates availability flag or stock quantity for a menu item.
       parameters:
         - $ref: '#/components/parameters/hotelId'
@@ -340,7 +341,7 @@ paths:
   /hotels/{hotelId}/menu/items/{itemId}/stock:
     patch:
       tags: [Menu]
-      summary: Update item stock (Alias endpoint)
+      summary: Update item stock | Hotel Owner / Admin
       description: Alias endpoint for updating item availability or stock quantity.
       parameters:
         - $ref: '#/components/parameters/hotelId'
@@ -365,9 +366,9 @@ paths:
   /orders:
     post:
       tags: [Orders]
-      summary: Place an order
+      summary: Place an order | Customer
       description: |
-        Places a new pickup order (Customer). Prices and line totals are strictly calculated server-side.
+        Places a new pickup order. Prices and line totals are strictly calculated server-side.
         Supports idempotency using the optional `Idempotency-Key` header.
       parameters:
         - name: Idempotency-Key
@@ -401,7 +402,7 @@ paths:
           $ref: '#/components/responses/Error'
     get:
       tags: [Orders]
-      summary: List customer order history
+      summary: List customer order history | Customer
       description: Retrieves order history for the authenticated customer. Optional status filter and pagination.
       parameters:
         - name: status
@@ -428,7 +429,7 @@ paths:
   /orders/active:
     get:
       tags: [Orders]
-      summary: Get active orders
+      summary: Get active orders | Customer
       description: Returns all orders for the caller that are currently active (not terminal COMPLETED, REJECTED, or CANCELLED).
       responses:
         '200':
@@ -442,7 +443,8 @@ paths:
   /orders/{orderId}:
     get:
       tags: [Orders]
-      summary: Get order details
+      summary: Get order details | Customer / Hotel Owner / Admin
+      description: Retrieves details for a specific order.
       parameters:
         - $ref: '#/components/parameters/orderId'
       responses:
@@ -457,7 +459,7 @@ paths:
   /orders/{orderId}/accept:
     post:
       tags: [Orders]
-      summary: Accept order (Hotel Owner)
+      summary: Accept order | Hotel Owner
       description: Transitions order from PLACED to ACCEPTED and assigns a daily sequential pickup token for the hotel.
       parameters:
         - $ref: '#/components/parameters/orderId'
@@ -473,7 +475,7 @@ paths:
   /orders/{orderId}/reject:
     post:
       tags: [Orders]
-      summary: Reject order (Hotel Owner)
+      summary: Reject order | Hotel Owner
       description: Rejects a PLACED order.
       parameters:
         - $ref: '#/components/parameters/orderId'
@@ -489,7 +491,7 @@ paths:
   /orders/{orderId}/cancel:
     post:
       tags: [Orders]
-      summary: Cancel order (Customer)
+      summary: Cancel order | Customer
       description: Allows customer to cancel their order if it is still in PLACED status.
       parameters:
         - $ref: '#/components/parameters/orderId'
@@ -507,7 +509,7 @@ paths:
   /orders/{orderId}/status:
     patch:
       tags: [Orders]
-      summary: Update order status (Hotel Owner)
+      summary: Update order status | Hotel Owner
       description: Advances order status (ACCEPTED -> PREPARING -> READY_FOR_PICKUP -> COMPLETED).
       parameters:
         - $ref: '#/components/parameters/orderId'
@@ -529,7 +531,7 @@ paths:
   /owner/hotels:
     get:
       tags: [Owner]
-      summary: List owned hotels
+      summary: List owned hotels | Hotel Owner
       description: Returns all hotels registered by the authenticated owner.
       responses:
         '200':
@@ -542,7 +544,7 @@ paths:
                   $ref: '#/components/schemas/Hotel'
     post:
       tags: [Owner]
-      summary: Register a hotel
+      summary: Register a hotel | Hotel Owner
       description: Registers a new hotel under the caller's account. Starts in PENDING approval status.
       requestBody:
         required: true
@@ -560,7 +562,8 @@ paths:
   /owner/hotels/{hotelId}:
     put:
       tags: [Owner]
-      summary: Update hotel profile
+      summary: Update hotel profile | Hotel Owner
+      description: Updates hotel profile details.
       parameters:
         - $ref: '#/components/parameters/hotelId'
       requestBody:
@@ -579,7 +582,7 @@ paths:
   /owner/hotels/{hotelId}/hours:
     put:
       tags: [Owner]
-      summary: Update hotel operating hours
+      summary: Update hotel operating hours | Hotel Owner
       description: Sets operating hours schedule (dayOfWeek 1=Monday..7=Sunday, times formatted as HH:mm in Asia/Kolkata timezone).
       parameters:
         - $ref: '#/components/parameters/hotelId'
@@ -599,7 +602,7 @@ paths:
   /owner/hotels/{hotelId}/accepting-orders:
     patch:
       tags: [Owner]
-      summary: Toggle order acceptance status
+      summary: Toggle order acceptance status | Hotel Owner
       description: Enables or pauses accepting new orders for a hotel.
       parameters:
         - $ref: '#/components/parameters/hotelId'
@@ -619,7 +622,7 @@ paths:
   /owner/orders:
     get:
       tags: [Owner]
-      summary: List owner hotel orders
+      summary: List owner hotel orders | Hotel Owner
       description: Lists orders across hotels owned by the caller with optional status filters and hotelId filtering.
       parameters:
         - name: hotelId
@@ -652,7 +655,7 @@ paths:
   /owner/dashboard:
     get:
       tags: [Owner]
-      summary: Owner dashboard summary
+      summary: Owner dashboard summary | Hotel Owner
       description: Retrieves today's sales metrics and order breakdown for hotels owned by caller.
       responses:
         '200':
@@ -664,7 +667,7 @@ paths:
   /notifications:
     get:
       tags: [Notifications]
-      summary: List user notifications
+      summary: List user notifications | Authenticated User
       description: Retrieves in-app notifications for order state updates for the authenticated user.
       parameters:
         - name: unread
@@ -688,14 +691,16 @@ paths:
   /notifications/read-all:
     post:
       tags: [Notifications]
-      summary: Mark all notifications as read
+      summary: Mark all notifications as read | Authenticated User
+      description: Marks all notifications as read for the authenticated user.
       responses:
         '204':
           description: All notifications marked as read
   /notifications/{id}/read:
     post:
       tags: [Notifications]
-      summary: Mark single notification as read
+      summary: Mark single notification as read | Authenticated User
+      description: Marks a single notification as read.
       parameters:
         - name: id
           in: path
@@ -711,8 +716,8 @@ paths:
   /admin/hotels:
     get:
       tags: [Admin]
-      summary: List all hotels for administration
-      description: Lists all hotels including unapproved, rejected, or suspended ones (Admin only).
+      summary: List all hotels for administration | Admin
+      description: Lists all hotels including unapproved, rejected, or suspended ones.
       parameters:
         - name: q
           in: query
@@ -731,8 +736,8 @@ paths:
   /admin/hotels/{hotelId}/approval:
     patch:
       tags: [Admin]
-      summary: Update hotel approval status
-      description: Approves, rejects, or suspends a hotel registration (Admin only).
+      summary: Update hotel approval status | Admin
+      description: Approves, rejects, or suspends a hotel registration.
       parameters:
         - $ref: '#/components/parameters/hotelId'
       requestBody:
@@ -751,8 +756,8 @@ paths:
   /admin/owners:
     post:
       tags: [Admin]
-      summary: Create hotel owner account
-      description: Creates a new user with the `HOTEL_OWNER` role (Admin only).
+      summary: Create hotel owner account | Admin
+      description: Creates a new user with the `HOTEL_OWNER` role.
       requestBody:
         required: true
         content:
@@ -769,8 +774,8 @@ paths:
   /admin/customers:
     get:
       tags: [Admin]
-      summary: List customer accounts
-      description: Returns paginated customers with optional active status and search filter (Admin only).
+      summary: List customer accounts | Admin
+      description: Returns paginated customers with optional active status and search filter.
       parameters:
         - name: q
           in: query
@@ -800,8 +805,8 @@ paths:
   /admin/customers/{id}/active:
     patch:
       tags: [Admin]
-      summary: Activate or deactivate customer account
-      description: Sets active status for a customer. Deactivating immediately revokes all active customer sessions (Admin only).
+      summary: Activate or deactivate customer account | Admin
+      description: Sets active status for a customer. Deactivating immediately revokes all active customer sessions.
       parameters:
         - name: id
           in: path
@@ -825,8 +830,8 @@ paths:
   /admin/orders:
     get:
       tags: [Admin]
-      summary: List system-wide orders
-      description: Retrieves all orders across the system with filtering by status, hotelId, customerId, and date range (yyyy-MM-dd) (Admin only).
+      summary: List system-wide orders | Admin
+      description: Retrieves all orders across the system with filtering by status, hotelId, customerId, and date range (yyyy-MM-dd).
       parameters:
         - name: status
           in: query
@@ -874,8 +879,8 @@ paths:
   /admin/reports/overview:
     get:
       tags: [Admin]
-      summary: Get platform overview report
-      description: Returns platform metrics (total sales, order status breakdown, customer count, hotel count) over an inclusive date range (Admin only).
+      summary: Get platform overview report | Admin
+      description: Returns platform metrics (total sales, order status breakdown, customer count, hotel count) over an inclusive date range.
       parameters:
         - name: from
           in: query
@@ -897,8 +902,8 @@ paths:
   /admin/reports/hotels:
     get:
       tags: [Admin]
-      summary: Get hotel sales breakdown report
-      description: Returns per-hotel order counts and sales metrics for a given date range (Admin only).
+      summary: Get hotel sales breakdown report | Admin
+      description: Returns per-hotel order counts and sales metrics for a given date range.
       parameters:
         - name: from
           in: query

@@ -111,7 +111,7 @@ class OrderService(
     // Customers may cancel only their own order, and only before the hotel has responded.
     fun cancel(p: UserPrincipal, orderId: Long): OrderDto {
         if (p.role != Role.CUSTOMER) throw ForbiddenException()
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             val order = orders.findByIdForUpdate(conn, orderId)?.takeIf { it.customerId == p.userId }
                 ?: throw NotFoundException("Order not found")
             if (!OrderStateMachine.canTransition(order.status, OrderStatus.CANCELLED)) {
@@ -120,6 +120,9 @@ class OrderService(
             orders.updateStatus(conn, order.id, OrderStatus.CANCELLED)
             orders.findById(conn, order.id)!!.toDto()
         }
+        ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
+        ServerEventBus.broadcast("MENU_UPDATED", dto.hotelId)
+        return dto
     }
 
     fun updateStatus(p: UserPrincipal, orderId: Long, status: OrderStatus): OrderDto {

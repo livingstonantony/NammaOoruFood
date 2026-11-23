@@ -66,18 +66,22 @@ class HotelService(
     fun createHotel(p: UserPrincipal, req: HotelRequest): HotelDto {
         requireRole(p, Role.HOTEL_OWNER)
         val v = validateHotel(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             hotels.create(conn, p.userId, v.name, v.description, v.address, v.phone).toDto(emptyList())
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun updateHotel(p: UserPrincipal, id: Long, req: HotelRequest): HotelDto {
         val v = validateHotel(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             val hotel = ownedHotel(conn, p, id)
             hotels.update(conn, id, v.name, v.description, v.address, v.phone)
             hotels.findById(conn, id)!!.toDto(hotels.hoursFor(conn, listOf(hotel.id))[id].orEmpty())
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun setOperatingHours(p: UserPrincipal, id: Long, req: OperatingHoursRequest): HotelDto {
@@ -89,11 +93,13 @@ class HotelService(
             OperatingHour(h.dayOfWeek, opens, closes)
         }
         if (parsed.map { it.dayOfWeek }.toSet().size != parsed.size) throw ValidationException("Duplicate day in operating hours")
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, id)
             hotels.replaceHours(conn, id, parsed)
             hotels.findById(conn, id)!!.toDto(parsed)
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun setAcceptingOrders(p: UserPrincipal, id: Long, accepting: Boolean): HotelDto {
@@ -119,7 +125,7 @@ class HotelService(
     fun createCategory(p: UserPrincipal, hotelId: Long, req: CategoryRequest): CategoryDto {
         val name = req.name.trim()
         if (name.isEmpty() || name.length > 80) throw ValidationException("Category name must be 1-80 characters")
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             try {
                 hotels.createCategory(conn, hotelId, name, req.sortOrder).toDto()
@@ -127,6 +133,8 @@ class HotelService(
                 throw ConflictException("Category already exists")
             }
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun createFoodItem(p: UserPrincipal, hotelId: Long, req: FoodItemRequest): FoodItemDto {
@@ -166,9 +174,12 @@ class HotelService(
         return dto
     }
 
-    fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) = db.transaction { conn ->
-        ownedHotel(conn, p, hotelId)
-        if (!hotels.deleteFoodItem(conn, hotelId, itemId)) throw NotFoundException("Food item not found")
+    fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) {
+        db.transaction { conn ->
+            ownedHotel(conn, p, hotelId)
+            if (!hotels.deleteFoodItem(conn, hotelId, itemId)) throw NotFoundException("Food item not found")
+        }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
     }
 
     fun setApproval(p: UserPrincipal, hotelId: Long, status: ApprovalStatus): HotelDto {

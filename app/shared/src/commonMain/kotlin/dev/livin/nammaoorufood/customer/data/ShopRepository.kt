@@ -21,7 +21,9 @@ interface ShopRepository {
     suspend fun orderHistory(): ApiResult<OrderPage>
     suspend fun cancelOrder(id: Long): ApiResult<OrderDto>
     suspend fun unreadNotifications(): ApiResult<NotificationPage>
+    suspend fun notifications(unreadOnly: Boolean = false): ApiResult<NotificationPage>
     suspend fun markNotificationRead(id: Long): ApiResult<Unit>
+    suspend fun markAllNotificationsRead(): ApiResult<Unit>
 }
 
 class KtorShopRepository(private val client: HttpClient) : ShopRepository {
@@ -58,14 +60,21 @@ class KtorShopRepository(private val client: HttpClient) : ShopRepository {
         url.path("orders/$id/cancel")
     }
 
-    override suspend fun unreadNotifications() = client.apiCall<NotificationPage> {
+    override suspend fun unreadNotifications() = notifications(unreadOnly = true)
+
+    override suspend fun notifications(unreadOnly: Boolean) = client.apiCall<NotificationPage> {
         url.path("notifications")
-        parameter("unread", true)
-        parameter("limit", 20)
+        parameter("unread", unreadOnly)
+        parameter("limit", 50)
     }
 
     override suspend fun markNotificationRead(id: Long) = client.apiCall<Unit> {
         method = HttpMethod.Post
         url.path("notifications/$id/read")
+    }
+
+    override suspend fun markAllNotificationsRead() = client.apiCall<Unit> {
+        method = HttpMethod.Post
+        url.path("notifications/read-all")
     }
 }

@@ -62,6 +62,30 @@ fun EmptyState(message: String) =
     Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { Text(message, style = MaterialTheme.typography.bodyLarge) }
 
 @Composable
+fun NotificationIconButton(
+    unreadCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        BadgedBox(
+            badge = {
+                if (unreadCount > 0) {
+                    Badge {
+                        Text(
+                            text = if (unreadCount > 9) "9+" else "$unreadCount",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+        ) {
+            Text("🔔", style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+@Composable
 fun ScreenTitle(title: String, onBack: (() -> Unit)? = null, modifier: Modifier = Modifier.fillMaxWidth()) {
     Row(modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) TextButton(onClick = onBack) { Text("← Back") } else Spacer(Modifier.width(8.dp))

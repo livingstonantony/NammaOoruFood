@@ -11,6 +11,7 @@ import dev.livin.nammaoorufood.customer.data.ShopRepository
 import dev.livin.nammaoorufood.customer.data.errorMessage
 import dev.livin.nammaoorufood.network.FoodItemDto
 import dev.livin.nammaoorufood.network.HotelDto
+import dev.livin.nammaoorufood.network.LiveEventBus
 import dev.livin.nammaoorufood.network.MenuResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,13 +41,25 @@ sealed interface MenuIntent {
     data object DismissMessage : MenuIntent
 }
 
-class MenuViewModel(private val hotelId: Long, private val repo: ShopRepository, private val cart: CartStore) : ViewModel() {
+class MenuViewModel(
+    private val hotelId: Long,
+    private val repo: ShopRepository,
+    private val cart: CartStore,
+    private val eventBus: LiveEventBus,
+) : ViewModel() {
     private val _state = MutableStateFlow(MenuState(cart = cart.state.value))
     val state: StateFlow<MenuState> = _state.asStateFlow()
 
     init {
         cart.state.onEach { c -> _state.update { it.copy(cart = c) } }.launchIn(viewModelScope)
         load()
+        eventBus.events
+            .onEach { event ->
+                if ((event.type == "MENU_UPDATED" || event.type == "HOTEL_UPDATED") && (event.id == null || event.id == hotelId)) {
+                    load()
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onIntent(intent: MenuIntent) {

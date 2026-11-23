@@ -19,7 +19,12 @@ import dev.livin.nammaoorufood.network.HotelDto
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun HotelListScreen(vm: HotelListViewModel, onOpenHotel: (HotelDto) -> Unit) {
+fun HotelListScreen(
+    vm: HotelListViewModel,
+    unreadCount: Int,
+    onOpenNotifications: () -> Unit,
+    onOpenHotel: (HotelDto) -> Unit,
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -28,6 +33,10 @@ fun HotelListScreen(vm: HotelListViewModel, onOpenHotel: (HotelDto) -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             ScreenTitle("Hotels near you", modifier = Modifier.weight(1f))
+            NotificationIconButton(
+                unreadCount = unreadCount,
+                onClick = onOpenNotifications,
+            )
             IconButton(
                 onClick = { vm.onIntent(HotelListIntent.Refresh) },
                 modifier = Modifier.padding(end = 8.dp),

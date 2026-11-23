@@ -36,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -82,7 +83,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
         while (true) {
             runCatching { retention.runOnce() }
                 .onFailure { log.warn("Retention cleanup failed: ${it.javaClass.simpleName}") }
-            delay(Duration.ofHours(6).toMillis())
+            delay(Duration.ofHours(6).toMillis().milliseconds)
         }
     }
     monitor.subscribe(ApplicationStopping) { retentionJob.cancel() }
@@ -94,11 +95,12 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
         allowHeader(HttpHeaders.Authorization); allowHeader(HttpHeaders.ContentType)
         allowHeader("Idempotency-Key")
         if (!config.isProduction) {
-            allowOrigins { it.startsWith("http://localhost:") || it.startsWith("http://127.0.0.1:") }
-        }
-        config.corsAllowedOrigins.forEach { origin ->
-            val (scheme, host) = origin.split("://", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-            allowHost(host, schemes = listOf(scheme))
+            anyHost()
+        } else {
+            config.corsAllowedOrigins.forEach { origin ->
+                val (scheme, host) = origin.split("://", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+                allowHost(host, schemes = listOf(scheme))
+            }
         }
     }
     install(WebSockets)
