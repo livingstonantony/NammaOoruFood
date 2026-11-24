@@ -20,10 +20,16 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class Tab(val title: String, val icon: String) {
-    Home("Home", "🏠"),
-    Orders("Orders", "🧾"),
-    Profile("Profile", "👤"),
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.ui.graphics.vector.ImageVector
+
+enum class Tab(val title: String, val icon: ImageVector) {
+    Home("Home", Icons.Default.Home),
+    Orders("Orders", Icons.Default.ShoppingCart),
+    Profile("Profile", Icons.Default.Person),
 }
 
 sealed interface Route {
@@ -82,7 +88,7 @@ fun CustomerApp(user: UserDto, session: SessionManager) {
                         NavigationBarItem(
                             selected = nav.tab == tab,
                             onClick = { nav.tab = tab },
-                            icon = { Text(tab.icon, style = MaterialTheme.typography.titleMedium) },
+                            icon = { Icon(tab.icon, contentDescription = tab.title) },
                             label = {
                                 Text(
                                     tab.title,

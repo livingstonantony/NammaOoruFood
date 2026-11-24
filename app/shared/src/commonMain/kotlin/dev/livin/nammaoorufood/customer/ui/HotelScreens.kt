@@ -18,6 +18,9 @@ import dev.livin.nammaoorufood.network.FoodItemDto
 import dev.livin.nammaoorufood.network.HotelDto
 import org.koin.compose.viewmodel.koinViewModel
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+
 @Composable
 fun HotelListScreen(
     vm: HotelListViewModel,
@@ -41,7 +44,7 @@ fun HotelListScreen(
                 onClick = { vm.onIntent(HotelListIntent.Refresh) },
                 modifier = Modifier.padding(end = 8.dp),
             ) {
-                Text("🔄", style = MaterialTheme.typography.titleMedium)
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
             }
         }
         OutlinedTextField(

@@ -10,15 +10,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.livin.nammaoorufood.network.OrderStatus
 
-/** Status is conveyed by a text label and glyph, never by color alone. */
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Restaurant
+
+/** Status is conveyed by a text label and Google Material Icon. */
 fun OrderStatus.label() = when (this) {
-    OrderStatus.PLACED -> "⏳ Waiting for hotel"
-    OrderStatus.ACCEPTED -> "✔ Accepted"
-    OrderStatus.PREPARING -> "🍳 Preparing"
-    OrderStatus.READY_FOR_PICKUP -> "✅ Ready for pickup"
-    OrderStatus.COMPLETED -> "✔ Completed"
-    OrderStatus.REJECTED -> "✖ Rejected"
-    OrderStatus.CANCELLED -> "✖ Cancelled"
+    OrderStatus.PLACED -> "Waiting for hotel"
+    OrderStatus.ACCEPTED -> "Accepted"
+    OrderStatus.PREPARING -> "Preparing"
+    OrderStatus.READY_FOR_PICKUP -> "Ready for pickup"
+    OrderStatus.COMPLETED -> "Completed"
+    OrderStatus.REJECTED -> "Rejected"
+    OrderStatus.CANCELLED -> "Cancelled"
+}
+
+fun OrderStatus.icon() = when (this) {
+    OrderStatus.PLACED -> Icons.Default.HourglassEmpty
+    OrderStatus.ACCEPTED -> Icons.Default.CheckCircle
+    OrderStatus.PREPARING -> Icons.Default.Restaurant
+    OrderStatus.READY_FOR_PICKUP -> Icons.Default.Check
+    OrderStatus.COMPLETED -> Icons.Default.Done
+    OrderStatus.REJECTED -> Icons.Default.Close
+    OrderStatus.CANCELLED -> Icons.Default.Cancel
 }
 
 @Composable
@@ -29,7 +50,18 @@ fun StatusChip(status: OrderStatus) {
         color = if (ready) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
         contentColor = if (ready) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
     ) {
-        Text(status.label(), Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = status.icon(),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(status.label(), style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -80,7 +112,7 @@ fun NotificationIconButton(
                 }
             }
         ) {
-            Text("🔔", style = MaterialTheme.typography.titleMedium)
+            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
         }
     }
 }
@@ -88,7 +120,13 @@ fun NotificationIconButton(
 @Composable
 fun ScreenTitle(title: String, onBack: (() -> Unit)? = null, modifier: Modifier = Modifier.fillMaxWidth()) {
     Row(modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) TextButton(onClick = onBack) { Text("← Back") } else Spacer(Modifier.width(8.dp))
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        } else {
+            Spacer(Modifier.width(8.dp))
+        }
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
     }
 }
