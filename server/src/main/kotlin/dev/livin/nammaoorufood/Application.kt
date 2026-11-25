@@ -74,7 +74,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
     val notificationRepository = ExposedNotificationRepository()
     val orderRepository = ExposedOrderRepository()
     val orderService = OrderService(db, orderRepository, hotelRepository, notificationRepository)
-    val adminService = AdminService(db, ExposedAdminRepository(), orderRepository, sessionRepository)
+    val adminService = AdminService(db, ExposedAdminRepository(), orderRepository, sessionRepository, users, hasher)
     val notificationService = NotificationService(db, notificationRepository)
     AccountSeeder(db, users, hasher, config.auth).run()
 

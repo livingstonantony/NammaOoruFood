@@ -827,6 +827,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomerDto'
+  /admin/users/reset-password:
+    post:
+      tags: [Admin]
+      summary: Reset password for a user | Admin
+      description: Resets the password for any user by username and revokes all active sessions for that user (Admin only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password reset successfully and active sessions revoked
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
   /admin/orders:
     get:
       tags: [Admin]
@@ -1023,6 +1043,17 @@ components:
           type: string
           format: password
           example: "SecurePass123!"
+    ResetPasswordRequest:
+      type: object
+      required: [username, newPassword]
+      properties:
+        username:
+          type: string
+          example: "john_customer"
+        newPassword:
+          type: string
+          format: password
+          example: "NewSecurePass123!"
     RefreshRequest:
       type: object
       required: [refreshToken]
