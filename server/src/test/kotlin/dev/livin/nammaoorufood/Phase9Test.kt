@@ -68,7 +68,7 @@ class Phase9Test {
     }
 
     @Test fun swaggerAndSpecAreServedOutsideProduction() = testApplication {
-        application { module(testConfig) }
+        application { module(testConfig, testImageKit()) }
         val spec = client.get("/swagger/documentation.yaml")
         assertEquals(HttpStatusCode.OK, spec.status)
         assertTrue(spec.bodyAsText().contains("openapi: 3.0.3"))
@@ -76,7 +76,7 @@ class Phase9Test {
     }
 
     @Test fun healthDoesNotExposeEnvironment() = testApplication {
-        application { module(testConfig) }
+        application { module(testConfig, testImageKit()) }
         assertFalse(client.get("/health").bodyAsText().contains("test"))
     }
 

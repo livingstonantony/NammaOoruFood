@@ -29,7 +29,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        manifestPlaceholders["nammaApiUrl"] = (project.findProperty("nammaApiUrl") as String?) ?: "http://192.168.0.3:8080"
+        manifestPlaceholders["nammaApiUrl"] = (project.findProperty("nammaApiUrl") as String?) ?: "http://192.168.0.4:8080"
     }
     flavorDimensions += "product"
     productFlavors {

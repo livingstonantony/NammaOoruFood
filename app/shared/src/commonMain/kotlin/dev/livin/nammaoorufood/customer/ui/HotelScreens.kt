@@ -76,6 +76,8 @@ fun HotelListScreen(
 @Composable
 private fun HotelCard(hotel: HotelDto, onClick: () -> Unit) {
     AppCard(onClick = onClick) {
+        RemoteImage(hotel.imageUrl, "${hotel.name} hotel", Modifier.fillMaxWidth().height(150.dp))
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(hotel.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             OpenBadge(hotel.isOpen)
@@ -155,6 +157,8 @@ fun MenuScreen(vm: MenuViewModel, onBack: () -> Unit, onOpenCart: () -> Unit) {
 private fun MenuItemRow(item: FoodItemDto, quantity: Int, hotelOpen: Boolean, onIntent: (MenuIntent) -> Unit) {
     AppCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            RemoteImage(item.imageUrl, item.name, Modifier.size(64.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.titleMedium)
                 item.description?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

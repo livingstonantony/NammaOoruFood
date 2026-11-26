@@ -29,6 +29,27 @@ tags:
   - name: WebSockets
     description: Real-time live event streaming over WebSockets
 paths:
+  /api/imagekit/upload-auth:
+    get:
+      tags: [Owner]
+      summary: Obtain temporary ImageKit upload authentication | Hotel owner
+      responses:
+        '200':
+          description: Temporary upload credentials; the private key is never returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expire, signature, publicKey]
+                properties:
+                  token: { type: string }
+                  expire: { type: integer, format: int64 }
+                  signature: { type: string }
+                  publicKey: { type: string }
+        '401':
+          description: Authentication required
+        '403':
+          description: Hotel owner role required
   /health:
     get:
       summary: Health check endpoint | Public
@@ -79,6 +100,31 @@ paths:
       responses:
         '201':
           description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /auth/register-owner:
+    post:
+      tags: [Auth]
+      summary: Register a hotel owner account | Public
+      description: Creates a hotel owner account and session. Rate limited per IP; hotels still require admin approval.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Owner account created successfully
           content:
             application/json:
               schema:
@@ -1153,6 +1199,10 @@ components:
           type: string
           nullable: true
           example: "9876543210"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
     AcceptingOrdersRequest:
       type: object
       required: [acceptingOrders]
@@ -1190,6 +1240,10 @@ components:
           type: string
           nullable: true
           example: "9876543210"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
         approvalStatus:
           type: string
           enum: [PENDING, APPROVED, REJECTED, SUSPENDED]
@@ -1277,6 +1331,10 @@ components:
           type: boolean
           default: false
           example: true
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
     AvailabilityRequest:
       type: object
       properties:
@@ -1325,6 +1383,10 @@ components:
         trackInventory:
           type: boolean
           example: true
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
     Menu:
       type: object
       required: [categories, items]

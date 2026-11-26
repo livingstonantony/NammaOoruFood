@@ -42,7 +42,7 @@ class AuthTest {
 
     private fun ApplicationTestBuilder.setup(cfg: AppConfig = config()): HttpClient {
         application {
-            module(cfg)
+            module(cfg, testImageKit())
             routing {
                 authenticate(JWT_AUTH) {
                     get("/test/admin") {
@@ -87,7 +87,27 @@ class AuthTest {
             contentType(ContentType.Application.Json)
             setBody(RegisterRequest("ab", "short", "X"))
         }
+
         assertEquals(HttpStatusCode.BadRequest, r.status)
+    }
+
+    @Test
+    fun ownerRegistrationCreatesOwnerAndCannotAccessAdmin() = testApplication {
+        val client = setup()
+        val response = client.post("/auth/register-owner") {
+            contentType(ContentType.Application.Json)
+            setBody(RegisterRequest("newowner", "password123", "Hotel Owner"))
+        }
+        assertEquals(HttpStatusCode.Created, response.status)
+        val auth = response.body<AuthResponse>()
+        assertEquals(Role.HOTEL_OWNER, auth.user.role)
+        assertEquals(HttpStatusCode.OK, client.get("/auth/me") { bearerAuth(auth.accessToken) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.get("/test/admin") { bearerAuth(auth.accessToken) }.status)
+        val duplicate = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(RegisterRequest("newowner", "password123", "Customer"))
+        }
+        assertEquals(HttpStatusCode.Conflict, duplicate.status)
     }
 
     @Test

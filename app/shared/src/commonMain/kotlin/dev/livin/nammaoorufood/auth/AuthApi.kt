@@ -4,6 +4,8 @@ import dev.livin.nammaoorufood.network.AuthResponse
 import dev.livin.nammaoorufood.network.ErrorResponse
 import dev.livin.nammaoorufood.network.LoginRequest
 import dev.livin.nammaoorufood.network.RefreshRequest
+import dev.livin.nammaoorufood.network.RegisterRequest
+import dev.livin.nammaoorufood.network.Role
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -22,6 +24,7 @@ sealed interface ApiResult<out T> {
 
 interface AuthApi {
     suspend fun login(username: String, password: String): ApiResult<AuthResponse>
+    suspend fun register(request: RegisterRequest, role: Role): ApiResult<AuthResponse>
     suspend fun refresh(refreshToken: String): ApiResult<AuthResponse>
     suspend fun logout(refreshToken: String): ApiResult<Unit>
 }
@@ -30,6 +33,15 @@ interface AuthApi {
 class KtorAuthApi(private val client: HttpClient) : AuthApi {
     override suspend fun login(username: String, password: String) =
         call<LoginRequest, AuthResponse>("/auth/login", LoginRequest(username, password))
+
+    override suspend fun register(request: RegisterRequest, role: Role): ApiResult<AuthResponse> {
+        val path = when (role) {
+            Role.CUSTOMER -> "/auth/register"
+            Role.HOTEL_OWNER -> "/auth/register-owner"
+            Role.ADMIN -> return ApiResult.Rejected(0, "Administrator registration is not available.", false)
+        }
+        return call<RegisterRequest, AuthResponse>(path, request)
+    }
 
     override suspend fun refresh(refreshToken: String) =
         call<RefreshRequest, AuthResponse>("/auth/refresh", RefreshRequest(refreshToken))

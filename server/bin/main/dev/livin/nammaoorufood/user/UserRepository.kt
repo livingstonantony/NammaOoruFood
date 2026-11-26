@@ -5,12 +5,14 @@ import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import java.sql.SQLIntegrityConstraintViolationException
 
 interface UserRepository {
     fun findByUsername(username: String): User?
     fun findById(id: Long): User?
     fun create(username: String, passwordHash: String, role: Role, displayName: String, phone: String?): User
+    fun updatePasswordHashByUsername(username: String, passwordHash: String): Boolean
     fun existsWithRole(role: Role): Boolean
 }
 
@@ -39,6 +41,11 @@ class ExposedUserRepository : UserRepository {
         }
         return User(id, username, passwordHash, role, displayName, active = true)
     }
+
+    override fun updatePasswordHashByUsername(username: String, passwordHash: String): Boolean =
+        UsersTable.update({ UsersTable.username eq username }) {
+            it[UsersTable.passwordHash] = passwordHash
+        } > 0
 
     override fun existsWithRole(role: Role): Boolean =
         UsersTable.selectAll().where { UsersTable.role eq role }.limit(1).singleOrNull() != null

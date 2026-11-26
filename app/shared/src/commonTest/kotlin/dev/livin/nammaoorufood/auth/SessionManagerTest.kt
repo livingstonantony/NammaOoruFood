@@ -2,6 +2,7 @@ package dev.livin.nammaoorufood.auth
 
 import dev.livin.nammaoorufood.network.AuthResponse
 import dev.livin.nammaoorufood.network.Role
+import dev.livin.nammaoorufood.network.RegisterRequest
 import dev.livin.nammaoorufood.network.UserDto
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -20,6 +21,7 @@ private class FakeApi : AuthApi {
     val refreshCalls = mutableListOf<String>()
     val logoutCalls = mutableListOf<String>()
     override suspend fun login(username: String, password: String) = loginResult
+    override suspend fun register(request: RegisterRequest, role: Role) = loginResult
     override suspend fun refresh(refreshToken: String): ApiResult<AuthResponse> {
         refreshCalls += refreshToken
         return refreshResult(refreshToken)
@@ -59,6 +61,13 @@ class SessionManagerTest {
         assertEquals(LoginOutcome.Success, manager.login(" customer ", "pw"))
         assertEquals(AuthState.Authenticated(user), manager.state.value)
         assertEquals("access1", manager.currentAccessToken())
+        assertEquals("refresh1", store.load()?.refreshToken)
+    }
+
+    @Test
+    fun registrationAdoptsSession() = runTest {
+        assertEquals(LoginOutcome.Success, manager.register(RegisterRequest("customer", "password1", "Customer"), Role.CUSTOMER))
+        assertEquals(AuthState.Authenticated(user), manager.state.value)
         assertEquals("refresh1", store.load()?.refreshToken)
     }
 

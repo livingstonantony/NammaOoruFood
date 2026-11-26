@@ -59,6 +59,8 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                         val stock = item.quantityAvailable
                         AppCard {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                RemoteImage(item.imageUrl, item.name, Modifier.size(64.dp))
+                                Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text("₹${item.price}", style = MaterialTheme.typography.bodyLarge)
@@ -100,6 +102,7 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
 
 @Composable
 private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuViewModel, onClose: () -> Unit) {
+    LaunchedEffect(item?.id) { vm.image.initialize(item?.imageUrl) }
     var name by remember { mutableStateOf(item?.name.orEmpty()) }
     var description by remember { mutableStateOf(item?.description.orEmpty()) }
     var price by remember { mutableStateOf(item?.price.orEmpty()) }
@@ -110,10 +113,11 @@ private fun ItemEditor(item: FoodItemDto?, state: OwnerMenuState, vm: OwnerMenuV
     var newCategory by remember { mutableStateOf("") }
     val categories = (state.menu as? Load.Success)?.data?.categories.orEmpty()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ScreenTitle(if (item == null) "Add item" else "Edit item", onBack = onClose)
+        ScreenTitle(if (item == null) "Add item" else "Edit item", onBack = if (state.saving) null else onClose)
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(name, { name = it }, label = { Text("Item name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+            OwnerImageControls(vm.image, enabled = !state.saving)
             OutlinedTextField(
                 price, { price = it }, label = { Text("Price (₹)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
@@ -267,6 +271,7 @@ fun HotelFormScreen(
     session: SessionManager,
     modifier: Modifier,
 ) {
+    LaunchedEffect(hotel?.id) { vm.image.initialize(hotel?.imageUrl) }
     var name by remember(hotel?.id) { mutableStateOf(hotel?.name.orEmpty()) }
     var description by remember(hotel?.id) { mutableStateOf(hotel?.description.orEmpty()) }
     var address by remember(hotel?.id) { mutableStateOf(hotel?.address.orEmpty()) }
@@ -292,6 +297,7 @@ fun HotelFormScreen(
             }
             OutlinedTextField(name, { name = it }, label = { Text("Hotel name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+            OwnerImageControls(vm.image, enabled = !saving)
             OutlinedTextField(address, { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(phone, { phone = it }, label = { Text("Phone (optional)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())

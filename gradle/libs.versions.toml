@@ -25,8 +25,13 @@ mysql = "26.10.0"
 kotlinx-serialization = "1.9.0"
 koin = "4.1.0"
 composeNavigationEvent = "1.1.0"
+filekit = "0.16.0"
+coil = "3.6.3"
 
 [libraries]
+filekit-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-composeViewModel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }

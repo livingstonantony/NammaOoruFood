@@ -32,6 +32,8 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.WebSockets
 import dev.livin.nammaoorufood.websocket.websocketRoutes
 import dev.livin.nammaoorufood.maintenance.RetentionService
+import dev.livin.nammaoorufood.imagekit.ImageKitConfig
+import dev.livin.nammaoorufood.imagekit.imageKitRoutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -40,14 +42,20 @@ import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
-    embeddedServer(Netty, port = port, host = "0.0.0.0") { module() }
+    val environment = applicationEnvironment { configure("application.conf") }
+    embeddedServer(Netty, environment = environment, configure = {
+        connector { this.port = port; host = "0.0.0.0" }
+    }) { module() }
         .start(wait = true)
 }
 
 @Serializable
 data class HealthResponse(val status: String)
 
-fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
+fun Application.module(
+    config: AppConfig = AppConfig.fromEnv(),
+    imageKit: ImageKitConfig = ImageKitConfig.from(environment.config),
+) {
     DatabaseFactory.migrate(config.database)
     val dataSource: HikariDataSource = DatabaseFactory.createDataSource(config.database)
     try {
@@ -111,6 +119,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
     routing {
         websocketRoutes()
         authRoutes(authService)
+        imageKitRoutes(imageKit)
         hotelRoutes(hotelService)
         orderRoutes(orderService)
         notificationRoutes(notificationService)

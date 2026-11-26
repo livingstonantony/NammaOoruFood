@@ -17,6 +17,9 @@ import dev.livin.nammaoorufood.admin.data.KtorAdminRepository
 import dev.livin.nammaoorufood.admin.ui.*
 import dev.livin.nammaoorufood.owner.data.KtorOwnerRepository
 import dev.livin.nammaoorufood.owner.data.OwnerRepository
+import dev.livin.nammaoorufood.owner.data.ImageKitUploadRepository
+import dev.livin.nammaoorufood.owner.data.KtorImageKitUploadRepository
+import dev.livin.nammaoorufood.owner.data.ImageKitClientConfig
 import dev.livin.nammaoorufood.owner.ui.*
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
@@ -44,10 +47,16 @@ fun appModule(platform: PlatformServices) = module {
     viewModel { AdminOrdersViewModel(get(), get()) }
 
     single<OwnerRepository> { KtorOwnerRepository(get(AuthenticatedClient)) }
-    viewModel { OwnerHotelViewModel(get(), get()) }
+    single<ImageKitUploadRepository> {
+        KtorImageKitUploadRepository(
+            get(AuthenticatedClient), createPublicClient(platform.engine, platform.baseUrl),
+            ImageKitClientConfig.publicKey, ImageKitClientConfig.urlEndpoint,
+        )
+    }
+    viewModel { OwnerHotelViewModel(get(), get(), get()) }
     viewModel { OwnerDashboardViewModel(get(), get()) }
     viewModel { (hotelId: Long) -> OwnerOrdersViewModel(hotelId, get(), get()) }
-    viewModel { (hotelId: Long) -> OwnerMenuViewModel(hotelId, get(), get()) }
+    viewModel { (hotelId: Long) -> OwnerMenuViewModel(hotelId, get(), get(), get()) }
 
     viewModel { LoginViewModel(get()) }
     viewModel { HotelListViewModel(get(), get()) }

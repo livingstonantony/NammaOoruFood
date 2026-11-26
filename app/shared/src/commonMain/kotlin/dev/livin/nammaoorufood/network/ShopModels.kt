@@ -22,6 +22,7 @@ data class HotelDto(
     val acceptingOrders: Boolean,
     val isOpen: Boolean,
     val operatingHours: List<OperatingHourDto> = emptyList(),
+    val imageUrl: String? = null,
 )
 
 @Serializable
@@ -40,6 +41,7 @@ data class FoodItemDto(
     val available: Boolean,
     val quantityAvailable: Int? = null,
     val trackInventory: Boolean = quantityAvailable != null,
+    val imageUrl: String? = null,
 )
 
 @Serializable

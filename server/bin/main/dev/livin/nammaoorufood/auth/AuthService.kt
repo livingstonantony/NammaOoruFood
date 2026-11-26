@@ -36,7 +36,11 @@ class AuthService(
     // Verified against unknown usernames so response time does not reveal which usernames exist.
     private val dummyHash = hasher.hash("dummy-password-for-timing")
 
-    fun registerCustomer(req: RegisterRequest): AuthResponse {
+    fun registerCustomer(req: RegisterRequest): AuthResponse = register(req, Role.CUSTOMER)
+
+    fun registerOwner(req: RegisterRequest): AuthResponse = register(req, Role.HOTEL_OWNER)
+
+    private fun register(req: RegisterRequest, role: Role): AuthResponse {
         val username = req.username.trim().lowercase()
         validateUsername(username)
         validatePassword(req.password)
@@ -48,7 +52,7 @@ class AuthService(
         val hash = hasher.hash(req.password)
         return db.transaction { conn ->
             val user = try {
-                users.create(username, hash, Role.CUSTOMER, displayName, phone)
+                users.create(username, hash, role, displayName, phone)
             } catch (e: SQLIntegrityConstraintViolationException) {
                 throw ConflictException("Username is already taken")
             }

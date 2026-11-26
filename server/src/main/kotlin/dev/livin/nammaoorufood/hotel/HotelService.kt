@@ -67,7 +67,7 @@ class HotelService(
         requireRole(p, Role.HOTEL_OWNER)
         val v = validateHotel(req)
         val dto = db.transaction { conn ->
-            hotels.create(conn, p.userId, v.name, v.description, v.address, v.phone).toDto(emptyList())
+            hotels.create(conn, p.userId, v.name, v.description, v.address, v.phone, v.imageUrl).toDto(emptyList())
         }
         ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
         return dto
@@ -77,7 +77,7 @@ class HotelService(
         val v = validateHotel(req)
         val dto = db.transaction { conn ->
             val hotel = ownedHotel(conn, p, id)
-            hotels.update(conn, id, v.name, v.description, v.address, v.phone)
+            hotels.update(conn, id, v.name, v.description, v.address, v.phone, v.imageUrl)
             hotels.findById(conn, id)!!.toDto(hotels.hoursFor(conn, listOf(hotel.id))[id].orEmpty())
         }
         ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
@@ -142,7 +142,7 @@ class HotelService(
         val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable).toDto()
+            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable, v.imageUrl).toDto()
         }
         ServerEventBus.broadcast("MENU_UPDATED", hotelId)
         return dto
@@ -153,7 +153,7 @@ class HotelService(
         val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable)) {
+            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable, v.imageUrl)) {
                 throw NotFoundException("Food item not found")
             }
             hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
@@ -216,6 +216,7 @@ class HotelService(
             id, name, description, address, phone, approvalStatus, acceptingOrders,
             isOpen = approvalStatus == ApprovalStatus.APPROVED && acceptingOrders && withinHours,
             operatingHours = hours.map { it.toDto() },
+            imageUrl = imageUrl,
         )
     }
 
@@ -250,7 +251,7 @@ class HotelService(
         throw ValidationException("Invalid time '$s', expected HH:mm")
     }
 
-    private data class ValidHotel(val name: String, val description: String?, val address: String, val phone: String?)
+    private data class ValidHotel(val name: String, val description: String?, val address: String, val phone: String?, val imageUrl: String?)
 
     private fun validateHotel(req: HotelRequest): ValidHotel {
         val name = req.name.trim()
@@ -261,10 +262,10 @@ class HotelService(
         if (description != null && description.length > 500) throw ValidationException("Description is too long")
         val phone = req.phone?.trim()?.takeIf { it.isNotEmpty() }
         if (phone != null && !Regex("^[0-9+ -]{7,20}$").matches(phone)) throw ValidationException("Invalid phone number")
-        return ValidHotel(name, description, address, phone)
+        return ValidHotel(name, description, address, phone, validateImageUrl(req.imageUrl))
     }
 
-    private data class ValidFood(val name: String, val description: String?, val price: BigDecimal)
+    private data class ValidFood(val name: String, val description: String?, val price: BigDecimal, val imageUrl: String?)
 
     private fun validateFood(req: FoodItemRequest): ValidFood {
         val name = req.name.trim()
@@ -273,6 +274,19 @@ class HotelService(
         if (description != null && description.length > 500) throw ValidationException("Description is too long")
         val price = req.price.trim().toBigDecimalOrNull() ?: throw ValidationException("Invalid price")
         if (price.signum() <= 0 || price.scale() > 2 || price > maxPrice) throw ValidationException("Price must be positive with at most 2 decimals")
-        return ValidFood(name, description, price.setScale(2))
+        return ValidFood(name, description, price.setScale(2), validateImageUrl(req.imageUrl))
+    }
+
+    private fun validateImageUrl(value: String?): String? {
+        if (value == null) return null
+        val uri = try {
+            java.net.URI(value)
+        } catch (_: IllegalArgumentException) {
+            throw ValidationException("Image URL must be a valid HTTPS URL")
+        }
+        if (value.length > 2048 || uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
+            throw ValidationException("Image URL must be a valid HTTPS URL of at most 2048 characters")
+        }
+        return value
     }
 }

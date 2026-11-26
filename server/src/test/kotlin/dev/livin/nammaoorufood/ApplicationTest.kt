@@ -19,7 +19,7 @@ class ApplicationTest {
 
     @Test
     fun healthReportsUpAndMigratesSchema() = testApplication {
-        application { module(testConfig) }
+        application { module(testConfig, testImageKit()) }
         val response = client.get("/health")
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("\"UP\""))

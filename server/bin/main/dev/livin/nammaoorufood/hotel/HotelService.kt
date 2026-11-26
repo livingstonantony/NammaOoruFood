@@ -66,18 +66,22 @@ class HotelService(
     fun createHotel(p: UserPrincipal, req: HotelRequest): HotelDto {
         requireRole(p, Role.HOTEL_OWNER)
         val v = validateHotel(req)
-        return db.transaction { conn ->
-            hotels.create(conn, p.userId, v.name, v.description, v.address, v.phone).toDto(emptyList())
+        val dto = db.transaction { conn ->
+            hotels.create(conn, p.userId, v.name, v.description, v.address, v.phone, v.imageUrl).toDto(emptyList())
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun updateHotel(p: UserPrincipal, id: Long, req: HotelRequest): HotelDto {
         val v = validateHotel(req)
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             val hotel = ownedHotel(conn, p, id)
-            hotels.update(conn, id, v.name, v.description, v.address, v.phone)
+            hotels.update(conn, id, v.name, v.description, v.address, v.phone, v.imageUrl)
             hotels.findById(conn, id)!!.toDto(hotels.hoursFor(conn, listOf(hotel.id))[id].orEmpty())
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun setOperatingHours(p: UserPrincipal, id: Long, req: OperatingHoursRequest): HotelDto {
@@ -89,11 +93,13 @@ class HotelService(
             OperatingHour(h.dayOfWeek, opens, closes)
         }
         if (parsed.map { it.dayOfWeek }.toSet().size != parsed.size) throw ValidationException("Duplicate day in operating hours")
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, id)
             hotels.replaceHours(conn, id, parsed)
             hotels.findById(conn, id)!!.toDto(parsed)
         }
+        ServerEventBus.broadcast("HOTEL_UPDATED", dto.id)
+        return dto
     }
 
     fun setAcceptingOrders(p: UserPrincipal, id: Long, accepting: Boolean): HotelDto {
@@ -119,7 +125,7 @@ class HotelService(
     fun createCategory(p: UserPrincipal, hotelId: Long, req: CategoryRequest): CategoryDto {
         val name = req.name.trim()
         if (name.isEmpty() || name.length > 80) throw ValidationException("Category name must be 1-80 characters")
-        return db.transaction { conn ->
+        val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             try {
                 hotels.createCategory(conn, hotelId, name, req.sortOrder).toDto()
@@ -127,6 +133,8 @@ class HotelService(
                 throw ConflictException("Category already exists")
             }
         }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
+        return dto
     }
 
     fun createFoodItem(p: UserPrincipal, hotelId: Long, req: FoodItemRequest): FoodItemDto {
@@ -134,7 +142,7 @@ class HotelService(
         val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable).toDto()
+            hotels.createFoodItem(conn, hotelId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable, v.imageUrl).toDto()
         }
         ServerEventBus.broadcast("MENU_UPDATED", hotelId)
         return dto
@@ -145,7 +153,7 @@ class HotelService(
         val dto = db.transaction { conn ->
             ownedHotel(conn, p, hotelId)
             checkCategory(conn, req.categoryId, hotelId)
-            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable)) {
+            if (!hotels.updateFoodItem(conn, hotelId, itemId, req.categoryId, v.name, v.description, v.price, req.available, req.quantityAvailable, v.imageUrl)) {
                 throw NotFoundException("Food item not found")
             }
             hotels.findFoodItem(conn, hotelId, itemId)!!.toDto()
@@ -166,9 +174,12 @@ class HotelService(
         return dto
     }
 
-    fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) = db.transaction { conn ->
-        ownedHotel(conn, p, hotelId)
-        if (!hotels.deleteFoodItem(conn, hotelId, itemId)) throw NotFoundException("Food item not found")
+    fun deleteFoodItem(p: UserPrincipal, hotelId: Long, itemId: Long) {
+        db.transaction { conn ->
+            ownedHotel(conn, p, hotelId)
+            if (!hotels.deleteFoodItem(conn, hotelId, itemId)) throw NotFoundException("Food item not found")
+        }
+        ServerEventBus.broadcast("MENU_UPDATED", hotelId)
     }
 
     fun setApproval(p: UserPrincipal, hotelId: Long, status: ApprovalStatus): HotelDto {
@@ -205,6 +216,7 @@ class HotelService(
             id, name, description, address, phone, approvalStatus, acceptingOrders,
             isOpen = approvalStatus == ApprovalStatus.APPROVED && acceptingOrders && withinHours,
             operatingHours = hours.map { it.toDto() },
+            imageUrl = imageUrl,
         )
     }
 
@@ -239,7 +251,7 @@ class HotelService(
         throw ValidationException("Invalid time '$s', expected HH:mm")
     }
 
-    private data class ValidHotel(val name: String, val description: String?, val address: String, val phone: String?)
+    private data class ValidHotel(val name: String, val description: String?, val address: String, val phone: String?, val imageUrl: String?)
 
     private fun validateHotel(req: HotelRequest): ValidHotel {
         val name = req.name.trim()
@@ -250,10 +262,10 @@ class HotelService(
         if (description != null && description.length > 500) throw ValidationException("Description is too long")
         val phone = req.phone?.trim()?.takeIf { it.isNotEmpty() }
         if (phone != null && !Regex("^[0-9+ -]{7,20}$").matches(phone)) throw ValidationException("Invalid phone number")
-        return ValidHotel(name, description, address, phone)
+        return ValidHotel(name, description, address, phone, validateImageUrl(req.imageUrl))
     }
 
-    private data class ValidFood(val name: String, val description: String?, val price: BigDecimal)
+    private data class ValidFood(val name: String, val description: String?, val price: BigDecimal, val imageUrl: String?)
 
     private fun validateFood(req: FoodItemRequest): ValidFood {
         val name = req.name.trim()
@@ -262,6 +274,19 @@ class HotelService(
         if (description != null && description.length > 500) throw ValidationException("Description is too long")
         val price = req.price.trim().toBigDecimalOrNull() ?: throw ValidationException("Invalid price")
         if (price.signum() <= 0 || price.scale() > 2 || price > maxPrice) throw ValidationException("Price must be positive with at most 2 decimals")
-        return ValidFood(name, description, price.setScale(2))
+        return ValidFood(name, description, price.setScale(2), validateImageUrl(req.imageUrl))
+    }
+
+    private fun validateImageUrl(value: String?): String? {
+        if (value == null) return null
+        val uri = try {
+            java.net.URI(value)
+        } catch (_: IllegalArgumentException) {
+            throw ValidationException("Image URL must be a valid HTTPS URL")
+        }
+        if (value.length > 2048 || uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
+            throw ValidationException("Image URL must be a valid HTTPS URL of at most 2048 characters")
+        }
+        return value
     }
 }

@@ -51,7 +51,7 @@ class NotificationTest {
         post("/auth/login") { contentType(ContentType.Application.Json); setBody(LoginRequest(user, pw)) }.body<AuthResponse>().accessToken
 
     private suspend fun ApplicationTestBuilder.fixture(): Fx {
-        application { module(config()) }
+        application { module(config(), testImageKit()) }
         val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")

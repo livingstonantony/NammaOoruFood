@@ -32,21 +32,30 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.WebSockets
 import dev.livin.nammaoorufood.websocket.websocketRoutes
 import dev.livin.nammaoorufood.maintenance.RetentionService
+import dev.livin.nammaoorufood.imagekit.ImageKitConfig
+import dev.livin.nammaoorufood.imagekit.imageKitRoutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
-    embeddedServer(Netty, port = port, host = "0.0.0.0") { module() }
+    val environment = applicationEnvironment { configure("application.conf") }
+    embeddedServer(Netty, environment = environment, configure = {
+        connector { this.port = port; host = "0.0.0.0" }
+    }) { module() }
         .start(wait = true)
 }
 
 @Serializable
 data class HealthResponse(val status: String)
 
-fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
+fun Application.module(
+    config: AppConfig = AppConfig.fromEnv(),
+    imageKit: ImageKitConfig = ImageKitConfig.from(environment.config),
+) {
     DatabaseFactory.migrate(config.database)
     val dataSource: HikariDataSource = DatabaseFactory.createDataSource(config.database)
     try {
@@ -73,7 +82,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
     val notificationRepository = ExposedNotificationRepository()
     val orderRepository = ExposedOrderRepository()
     val orderService = OrderService(db, orderRepository, hotelRepository, notificationRepository)
-    val adminService = AdminService(db, ExposedAdminRepository(), orderRepository, sessionRepository)
+    val adminService = AdminService(db, ExposedAdminRepository(), orderRepository, sessionRepository, users, hasher)
     val notificationService = NotificationService(db, notificationRepository)
     AccountSeeder(db, users, hasher, config.auth).run()
 
@@ -82,7 +91,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
         while (true) {
             runCatching { retention.runOnce() }
                 .onFailure { log.warn("Retention cleanup failed: ${it.javaClass.simpleName}") }
-            delay(Duration.ofHours(6).toMillis())
+            delay(Duration.ofHours(6).toMillis().milliseconds)
         }
     }
     monitor.subscribe(ApplicationStopping) { retentionJob.cancel() }
@@ -94,11 +103,12 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
         allowHeader(HttpHeaders.Authorization); allowHeader(HttpHeaders.ContentType)
         allowHeader("Idempotency-Key")
         if (!config.isProduction) {
-            allowOrigins { it.startsWith("http://localhost:") || it.startsWith("http://127.0.0.1:") }
-        }
-        config.corsAllowedOrigins.forEach { origin ->
-            val (scheme, host) = origin.split("://", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-            allowHost(host, schemes = listOf(scheme))
+            anyHost()
+        } else {
+            config.corsAllowedOrigins.forEach { origin ->
+                val (scheme, host) = origin.split("://", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+                allowHost(host, schemes = listOf(scheme))
+            }
         }
     }
     install(WebSockets)
@@ -109,6 +119,7 @@ fun Application.module(config: AppConfig = AppConfig.fromEnv()) {
     routing {
         websocketRoutes()
         authRoutes(authService)
+        imageKitRoutes(imageKit)
         hotelRoutes(hotelService)
         orderRoutes(orderService)
         notificationRoutes(notificationService)

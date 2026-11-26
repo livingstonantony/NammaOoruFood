@@ -20,6 +20,9 @@ data class CustomerPage(val items: List<CustomerDto>, val page: Int, val pageSiz
 data class ActiveRequest(val active: Boolean)
 
 @Serializable
+data class ResetPasswordRequest(val username: String, val newPassword: String)
+
+@Serializable
 data class HotelSalesRow(
     val hotelId: Long,
     val hotelName: String,

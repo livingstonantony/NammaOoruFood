@@ -46,8 +46,8 @@ private fun AuthGate(variant: AppVariant) {
     val logoutNotice by session.logoutNotice.collectAsStateWithLifecycle()
     when (val s = state) {
         AuthState.Initializing -> SplashScreen()
-        AuthState.Unauthenticated -> LoginScreen(notice = logoutNotice)
-        is AuthState.ReauthenticationRequired -> LoginScreen(notice = s.reason)
+        AuthState.Unauthenticated -> LoginScreen(variant = variant, notice = logoutNotice)
+        is AuthState.ReauthenticationRequired -> LoginScreen(variant = variant, notice = s.reason)
         is AuthState.Authenticated ->
             if (s.user.role != variant.role) WrongAppScreen(variant, s.user.role, session)
             else when (s.user.role) {

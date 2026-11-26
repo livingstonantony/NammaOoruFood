@@ -10,3 +10,20 @@ curl -X 'POST' \
   "username": "customer",
   "password": "customer12345"
 }'
+
+
+public_wMC0gBFQzi3E1fqjr1bUW9mUmhEo=
+private_OgWAXzXzWr5bUhQbT0R4zvh3SRo=
+https://ik.imagekit.io/cvxeqv4qk
+
+APP_ENV=local \
+IMAGEKIT_PUBLIC_KEY="public_wMC0gBFQzi3E1fqj1bUW9mUmhEo=" \
+IMAGEKIT_PRIVATE_KEY="private_OgWAXzXzWr5bUhQbT0R4zvh3SRo=" \
+IMAGEKIT_URL_ENDPOINT="https://ik.imagekit.io/cvxeqv4qk" \
+./gradlew :server:run
+
+unset ANDROID_PREFS_ROOT && export $(cat .env | xargs) && ./gradlew :server:run --no-configuration-cache
+
+lsof -ti:8080 | xargs kill -9
+
+./gradlew :app:webApp:wasmJsBrowserDevelopmentRun                                                                                                                   [21:57:30]

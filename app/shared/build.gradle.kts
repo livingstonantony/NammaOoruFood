@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -7,6 +8,47 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+}
+
+val imageKitProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val imageKitPublicKey = imageKitProperties.getProperty("IMAGEKIT_PUBLIC_KEY", "")
+val imageKitUrlEndpoint = imageKitProperties.getProperty("IMAGEKIT_URL_ENDPOINT", "")
+val imageKitConfigDir = layout.buildDirectory.dir("generated/imagekit/commonMain")
+val generateImageKitConfig = tasks.register("generateImageKitConfig") {
+    inputs.property("publicKey", imageKitPublicKey)
+    inputs.property("urlEndpoint", imageKitUrlEndpoint)
+    outputs.dir(imageKitConfigDir)
+    doLast {
+        fun kotlinString(value: String) = buildString {
+            append('"')
+            value.forEach {
+                when (it) {
+                    '\\' -> append("\\\\")
+                    '"' -> append("\\\"")
+                    '$' -> append("\\$")
+                    '\n' -> append("\\n")
+                    '\r' -> append("\\r")
+                    '\t' -> append("\\t")
+                    else -> append(it)
+                }
+            }
+            append('"')
+        }
+        val publicKey = inputs.properties["publicKey"] as String
+        val urlEndpoint = inputs.properties["urlEndpoint"] as String
+        val output = outputs.files.singleFile.resolve("dev/livin/nammaoorufood/owner/data/ImageKitClientConfig.kt")
+        output.parentFile.mkdirs()
+        output.writeText(
+            "package dev.livin.nammaoorufood.owner.data\n\n" +
+                "internal object ImageKitClientConfig {\n" +
+                "    const val publicKey = ${kotlinString(publicKey)}\n" +
+                "    const val urlEndpoint = ${kotlinString(urlEndpoint)}\n" +
+                "}\n"
+        )
+    }
 }
 
 kotlin {
@@ -55,6 +97,7 @@ kotlin {
     }
     
     sourceSets {
+        commonMain.get().kotlin.srcDir(generateImageKitConfig)
         androidMain.dependencies {
             implementation(libs.ktor.clientOkhttp)
             implementation(libs.compose.uiToolingPreview)
@@ -103,6 +146,9 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.composeViewModel)
+            implementation(libs.filekit.compose)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -111,6 +157,9 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.clientCio)
+        }
+        jvmTest.dependencies {
+            runtimeOnly(compose.desktop.currentOs)
         }
         iosMain.dependencies {
             implementation(libs.ktor.clientDarwin)

@@ -56,6 +56,9 @@ fun Route.authRoutes(auth: AuthService) {
             post("/register") {
                 call.respond(HttpStatusCode.Created, auth.registerCustomer(call.receive<RegisterRequest>()))
             }
+            post("/register-owner") {
+                call.respond(HttpStatusCode.Created, auth.registerOwner(call.receive<RegisterRequest>()))
+            }
             post("/login") {
                 call.respond(auth.login(call.receive<LoginRequest>()))
             }

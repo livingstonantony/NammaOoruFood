@@ -25,12 +25,45 @@ APP_ENV=test DB_URL=jdbc:mysql://localhost:3306/nammaoorufood_test DB_USER=namma
   `admin`/`owner`/`customer`); any other value is treated as production and requires every variable in `.env.example`.
 * Startup validates/applies Flyway migrations before creating the HikariCP pool. Flyway remains the only schema manager;
   Exposed maps the existing tables and manages transactions. Existing non-user repositories retain their SQL inside those transactions.
+* ImageKit configuration is required at startup: set `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, and
+  `IMAGEKIT_URL_ENDPOINT` in the server environment (see `.env.example`). Keep the private key on the server only.
+  `GET /api/imagekit/upload-auth` requires a hotel-owner access token and returns temporary upload credentials.
+  Add the matching **public** values to the ignored project-root `local.properties`, then rebuild the client:
+
+  ```properties
+  IMAGEKIT_PUBLIC_KEY=public_replace_me
+  IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/replace_me
+  ```
+
+  Never put the private key in `local.properties` or a client build. If client configuration is missing or does not
+  match the server, image uploads fail with an error; forms without images continue to work. The owner app lets users
+  select and crop an image before submission. The crop is exported as PNG; crops over 2 MiB are converted to JPEG
+  and reduced in quality and, if necessary, dimensions. JPEG conversion does not preserve transparency.
+  ImageKit uploads go directly from the client using short-lived credentials; the owner access token is not sent to
+  ImageKit. A successful upload is reused on retry if saving the form fails; unreferenced uploads are not deleted
+  automatically.
 * API docs: Swagger UI at `/swagger` (spec: `server/src/main/resources/openapi/documentation.yaml`). Disabled in production
   unless `ENABLE_API_DOCS=true`. The spec is maintained by hand, so update it when routes change.
+* Customers and hotel owners can create accounts from their respective apps. Public registration creates only the
+  corresponding customer or owner role; newly registered hotels still require administrator approval.
 * Order lifecycle: `PLACED → ACCEPTED → PREPARING → READY_FOR_PICKUP → COMPLETED`, or `PLACED → REJECTED`.
   Pickup tokens are assigned on acceptance and numbered per hotel per day. Prices are always computed on the server.
 * A background job every 6 hours deletes refresh sessions expired/revoked more than 7 days ago and notifications older than 90 days.
   Orders are never deleted.
+
+### Resetting a development database
+
+The initial Flyway schema now includes nullable hotel and food-item image URLs. An existing database has a different
+`V1` checksum and must be reset before using this development schema. **This permanently deletes every table and all
+data in the selected database. Never run this against production.** Stop the server, verify the host and database name,
+and explicitly run the following only for the local `nammaoorufood` development database:
+
+```sh
+mysql -h 127.0.0.1 -u root -p -e 'DROP DATABASE nammaoorufood; CREATE DATABASE nammaoorufood;'
+```
+
+Reapply any grants needed by the application database user, then start the server normally; Flyway recreates all tables.
+The server does not automatically clean or reset the database on migration errors.
 
 ## Deployment
 

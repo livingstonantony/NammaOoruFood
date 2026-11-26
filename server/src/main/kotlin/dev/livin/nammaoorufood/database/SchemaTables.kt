@@ -83,6 +83,7 @@ object HotelsTable : Table("hotels") {
         { it.name },
     )
     val acceptingOrders = bool("accepting_orders")
+    val imageUrl = varchar("image_url", 2048).nullable()
     val createdAt = utcDateTime("created_at")
     val updatedAt = utcDateTime("updated_at")
 
@@ -131,6 +132,7 @@ object FoodItemsTable : Table("food_items") {
     val price = decimal("price", 10, 2)
     val available = bool("available")
     val quantityAvailable = integer("quantity_available").nullable()
+    val imageUrl = varchar("image_url", 2048).nullable()
     val createdAt = utcDateTime("created_at")
     val updatedAt = utcDateTime("updated_at")
 

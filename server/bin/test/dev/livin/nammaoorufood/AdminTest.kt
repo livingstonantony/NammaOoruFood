@@ -58,7 +58,7 @@ class AdminTest {
         post("/auth/login") { contentType(ContentType.Application.Json); setBody(LoginRequest(user, pw)) }.body<AuthResponse>().accessToken
 
     private suspend fun ApplicationTestBuilder.fixture(): Fx {
-        application { module(config()) }
+        application { module(config(), testImageKit()) }
         val c = createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
         val owner = c.token("owner", "owner12345")
         val admin = c.token("admin", "admin12345")
@@ -190,5 +190,33 @@ class AdminTest {
         assertEquals(HttpStatusCode.BadRequest, f.c.send<Unit>(HttpMethod.Get, "/admin/reports/overview?from=2026-02-01&to=2026-01-01", f.admin).status)
         assertEquals(HttpStatusCode.BadRequest, f.c.send<Unit>(HttpMethod.Get, "/admin/reports/hotels?from=2020-01-01&to=2026-01-01", f.admin).status)
         assertEquals(HttpStatusCode.BadRequest, f.c.send<Unit>(HttpMethod.Get, "/admin/reports/hotels?from=garbage", f.admin).status)
+    }
+
+    @Test
+    fun adminCanResetUserPasswordAndLoginWithNewPassword() = testApplication {
+        val f = fixture()
+        val customerToken = f.c.token("customer", "CustomerPass123!")
+        assertNotNull(customerToken)
+
+        // Reset password by admin
+        val resetRes = f.c.send(
+            HttpMethod.Post,
+            "/admin/users/reset-password",
+            f.admin,
+            ResetPasswordRequest("customer", "NewSecretPass123!")
+        )
+        assertEquals(HttpStatusCode.NoContent, resetRes.status)
+
+        // Old password login fails
+        val oldLogin = f.c.post("/auth/login") { contentType(ContentType.Application.Json); setBody(LoginRequest("customer", "CustomerPass123!")) }
+        assertEquals(HttpStatusCode.Unauthorized, oldLogin.status)
+
+        // Old access token session is revoked
+        val meRes = f.c.send<Unit>(HttpMethod.Get, "/auth/me", customerToken)
+        assertEquals(HttpStatusCode.Unauthorized, meRes.status)
+
+        // New password login succeeds
+        val newLogin = f.c.post("/auth/login") { contentType(ContentType.Application.Json); setBody(LoginRequest("customer", "NewSecretPass123!")) }.body<AuthResponse>()
+        assertEquals("customer", newLogin.user.username)
     }
 }

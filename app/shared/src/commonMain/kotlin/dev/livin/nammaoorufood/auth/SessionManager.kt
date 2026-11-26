@@ -1,6 +1,8 @@
 package dev.livin.nammaoorufood.auth
 
 import dev.livin.nammaoorufood.network.AuthResponse
+import dev.livin.nammaoorufood.network.RegisterRequest
+import dev.livin.nammaoorufood.network.Role
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,9 +68,22 @@ class SessionManager(
                 adopt(result.value)
                 LoginOutcome.Success
             }
+
             is ApiResult.Rejected -> LoginOutcome.Failure(
                 if (result.unauthorized) "Invalid username or password" else result.message,
             )
+            is ApiResult.NetworkError -> LoginOutcome.Failure("Cannot reach the server. Check your connection.")
+        }
+    }
+
+    suspend fun register(request: RegisterRequest, role: Role): LoginOutcome = mutex.withLock {
+        _logoutNotice.value = null
+        when (val result = api.register(request, role)) {
+            is ApiResult.Success -> {
+                adopt(result.value)
+                LoginOutcome.Success
+            }
+            is ApiResult.Rejected -> LoginOutcome.Failure(result.message)
             is ApiResult.NetworkError -> LoginOutcome.Failure("Cannot reach the server. Check your connection.")
         }
     }

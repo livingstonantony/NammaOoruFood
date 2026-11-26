@@ -14,7 +14,7 @@ data class OwnerDashboardDto(
 )
 
 @Serializable
-data class HotelRequest(val name: String, val description: String? = null, val address: String, val phone: String? = null)
+data class HotelRequest(val name: String, val description: String? = null, val address: String, val phone: String? = null, val imageUrl: String? = null)
 
 @Serializable
 data class OperatingHoursRequest(val hours: List<OperatingHourDto>)
@@ -41,6 +41,7 @@ data class FoodItemRequest(
     val available: Boolean = true,
     val quantityAvailable: Int? = null,
     val trackInventory: Boolean = false,
+    val imageUrl: String? = null,
 )
 
 @Serializable

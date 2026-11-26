@@ -21,8 +21,8 @@ import java.sql.Connection
 import java.time.LocalTime
 
 interface HotelRepository {
-    fun create(conn: Connection, ownerId: Long, name: String, description: String?, address: String, phone: String?): Hotel
-    fun update(conn: Connection, id: Long, name: String, description: String?, address: String, phone: String?)
+    fun create(conn: Connection, ownerId: Long, name: String, description: String?, address: String, phone: String?, imageUrl: String?): Hotel
+    fun update(conn: Connection, id: Long, name: String, description: String?, address: String, phone: String?, imageUrl: String?)
     fun findById(conn: Connection, id: Long): Hotel?
     fun search(conn: Connection, query: String?, approvedOnly: Boolean, ownerId: Long?): List<Hotel>
     fun setApproval(conn: Connection, id: Long, status: ApprovalStatus)
@@ -34,31 +34,33 @@ interface HotelRepository {
     fun categoryBelongsToHotel(conn: Connection, categoryId: Long, hotelId: Long): Boolean
     fun foodItems(conn: Connection, hotelId: Long): List<FoodItem>
     fun findFoodItem(conn: Connection, hotelId: Long, itemId: Long): FoodItem?
-    fun createFoodItem(conn: Connection, hotelId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null): FoodItem
-    fun updateFoodItem(conn: Connection, hotelId: Long, itemId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null): Boolean
+    fun createFoodItem(conn: Connection, hotelId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null, imageUrl: String? = null): FoodItem
+    fun updateFoodItem(conn: Connection, hotelId: Long, itemId: Long, categoryId: Long?, name: String, description: String?, price: BigDecimal, available: Boolean, quantityAvailable: Int? = null, imageUrl: String? = null): Boolean
     fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean? = null, quantityAvailable: Int? = null, updateQuantity: Boolean = false): Boolean
     fun decrementStock(conn: Connection, hotelId: Long, itemId: Long, amount: Int): Boolean
     fun deleteFoodItem(conn: Connection, hotelId: Long, itemId: Long): Boolean
 }
 
 class ExposedHotelRepository : HotelRepository {
-    override fun create(conn: Connection, ownerId: Long, name: String, description: String?, address: String, phone: String?): Hotel {
+    override fun create(conn: Connection, ownerId: Long, name: String, description: String?, address: String, phone: String?, imageUrl: String?): Hotel {
         val id = HotelsTable.insert {
             it[HotelsTable.ownerId] = ownerId
             it[HotelsTable.name] = name
             it[HotelsTable.description] = description
             it[HotelsTable.address] = address
             it[HotelsTable.phone] = phone
+            it[HotelsTable.imageUrl] = imageUrl
         }[HotelsTable.id]
-        return Hotel(id, ownerId, name, description, address, phone, ApprovalStatus.PENDING, false)
+        return Hotel(id, ownerId, name, description, address, phone, ApprovalStatus.PENDING, false, imageUrl)
     }
 
-    override fun update(conn: Connection, id: Long, name: String, description: String?, address: String, phone: String?) {
+    override fun update(conn: Connection, id: Long, name: String, description: String?, address: String, phone: String?, imageUrl: String?) {
         HotelsTable.update({ HotelsTable.id eq id }) {
             it[HotelsTable.name] = name
             it[HotelsTable.description] = description
             it[HotelsTable.address] = address
             it[HotelsTable.phone] = phone
+            it[HotelsTable.imageUrl] = imageUrl
         }
     }
 
@@ -157,6 +159,7 @@ class ExposedHotelRepository : HotelRepository {
         price: BigDecimal,
         available: Boolean,
         quantityAvailable: Int?,
+        imageUrl: String?,
     ): FoodItem {
         val id = FoodItemsTable.insert {
             it[FoodItemsTable.hotelId] = hotelId
@@ -166,8 +169,9 @@ class ExposedHotelRepository : HotelRepository {
             it[FoodItemsTable.price] = price
             it[FoodItemsTable.available] = available
             it[FoodItemsTable.quantityAvailable] = quantityAvailable
+            it[FoodItemsTable.imageUrl] = imageUrl
         }[FoodItemsTable.id]
-        return FoodItem(id, hotelId, categoryId, name, description, price, available, quantityAvailable)
+        return FoodItem(id, hotelId, categoryId, name, description, price, available, quantityAvailable, imageUrl)
     }
 
     override fun updateFoodItem(
@@ -180,6 +184,7 @@ class ExposedHotelRepository : HotelRepository {
         price: BigDecimal,
         available: Boolean,
         quantityAvailable: Int?,
+        imageUrl: String?,
     ): Boolean = FoodItemsTable.update({
         (FoodItemsTable.id eq itemId) and (FoodItemsTable.hotelId eq hotelId)
     }) {
@@ -189,6 +194,7 @@ class ExposedHotelRepository : HotelRepository {
         it[FoodItemsTable.price] = price
         it[FoodItemsTable.available] = available
         it[FoodItemsTable.quantityAvailable] = quantityAvailable
+        it[FoodItemsTable.imageUrl] = imageUrl
     } == 1
 
     override fun setItemAvailability(conn: Connection, hotelId: Long, itemId: Long, available: Boolean?, quantityAvailable: Int?, updateQuantity: Boolean): Boolean =
@@ -238,6 +244,7 @@ class ExposedHotelRepository : HotelRepository {
         this[HotelsTable.phone],
         this[HotelsTable.approvalStatus],
         this[HotelsTable.acceptingOrders],
+        this[HotelsTable.imageUrl],
     )
 
     private fun ResultRow.toFoodItem() = FoodItem(
@@ -249,5 +256,6 @@ class ExposedHotelRepository : HotelRepository {
         this[FoodItemsTable.price],
         this[FoodItemsTable.available],
         this[FoodItemsTable.quantityAvailable],
+        this[FoodItemsTable.imageUrl],
     )
 }

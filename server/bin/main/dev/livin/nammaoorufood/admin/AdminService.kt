@@ -1,6 +1,7 @@
 package dev.livin.nammaoorufood.admin
 
 import dev.livin.nammaoorufood.auth.JWT_AUTH
+import dev.livin.nammaoorufood.auth.PasswordHasher
 import dev.livin.nammaoorufood.auth.SessionRepository
 import dev.livin.nammaoorufood.auth.UserPrincipal
 import dev.livin.nammaoorufood.auth.principalOrThrow
@@ -11,6 +12,7 @@ import dev.livin.nammaoorufood.plugins.ForbiddenException
 import dev.livin.nammaoorufood.plugins.NotFoundException
 import dev.livin.nammaoorufood.plugins.ValidationException
 import dev.livin.nammaoorufood.user.Role
+import dev.livin.nammaoorufood.user.UserRepository
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -29,6 +31,8 @@ class AdminService(
     private val admin: AdminRepository,
     private val orders: OrderRepository,
     private val sessions: SessionRepository,
+    private val users: UserRepository,
+    private val hasher: PasswordHasher,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun customers(p: UserPrincipal, query: String?, active: Boolean?, page: Int, pageSize: Int): CustomerPage {
@@ -48,6 +52,20 @@ class AdminService(
             admin.setCustomerActive(conn, id, active)
             if (!active) sessions.revokeAllForUser(conn, id, clock.instant())
             admin.findCustomer(conn, id)!!
+        }
+    }
+
+    fun resetUserPassword(p: UserPrincipal, username: String, newPassword: String) {
+        requireAdmin(p)
+        val cleanUsername = username.trim().lowercase()
+        if (cleanUsername.isEmpty()) throw ValidationException("Username is required")
+        if (newPassword.length !in 8..72) throw ValidationException("Password must be 8-72 characters")
+
+        db.transaction { conn ->
+            val user = users.findByUsername(cleanUsername) ?: throw NotFoundException("User not found")
+            val newHash = hasher.hash(newPassword)
+            users.updatePasswordHashByUsername(cleanUsername, newHash)
+            sessions.revokeAllForUser(conn, user.id, clock.instant())
         }
     }
 
@@ -129,6 +147,11 @@ fun Route.adminRoutes(service: AdminService) {
             patch("/customers/{id}/active") {
                 val id = call.parameters["id"]?.toLongOrNull() ?: throw ValidationException("Invalid id")
                 call.respond(service.setCustomerActive(call.principalOrThrow(), id, call.receive<ActiveRequest>().active))
+            }
+            post("/users/reset-password") {
+                val req = call.receive<ResetPasswordRequest>()
+                service.resetUserPassword(call.principalOrThrow(), req.username, req.newPassword)
+                call.respond(HttpStatusCode.NoContent)
             }
             get("/orders") {
                 val q = call.request.queryParameters

@@ -64,7 +64,7 @@ class HotelApiTest {
     }
 
     private fun ApplicationTestBuilder.api(): HttpClient {
-        application { module(config()) }
+        application { module(config(), testImageKit()) }
         return createClient { install(ContentNegotiation) { json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }) } }
     }
 
@@ -82,6 +82,34 @@ class HotelApiTest {
         val hotel = send(HttpMethod.Post, "/owner/hotels", owner, HotelRequest("Amma Hotel", "Parotta", "Main St", "9876543210")).body<HotelDto>()
         send(HttpMethod.Patch, "/admin/hotels/${hotel.id}/approval", admin, ApprovalRequest(ApprovalStatus.APPROVED))
         return hotel
+    }
+
+    @Test
+    fun hotelAndFoodImageUrlsRoundTrip() = testApplication {
+        val c = api()
+        val owner = c.token("owner", "owner12345")
+        val hotelUrl = "https://ik.imagekit.io/example/namma-ooru-food/hotels/hotel.jpg"
+        val foodUrl = "https://ik.imagekit.io/example/namma-ooru-food/menu-items/food.jpg"
+        val created = c.send(
+            HttpMethod.Post, "/owner/hotels", owner,
+            HotelRequest("Hotel", address = "Main St", imageUrl = hotelUrl),
+        ).body<HotelDto>()
+        assertEquals(hotelUrl, created.imageUrl)
+        assertEquals(hotelUrl, c.get("/hotels/${created.id}") { bearerAuth(owner) }.body<HotelDto>().imageUrl)
+
+        val item = c.send(
+            HttpMethod.Post, "/hotels/${created.id}/menu/items", owner,
+            FoodItemRequest("Dosa", price = "50.00", imageUrl = foodUrl),
+        ).body<FoodItemDto>()
+        assertEquals(foodUrl, item.imageUrl)
+        val menu = c.get("/hotels/${created.id}/menu") { bearerAuth(owner) }.body<MenuResponse>()
+        assertEquals(foodUrl, menu.items.single().imageUrl)
+
+        val withoutImage = c.send(
+            HttpMethod.Post, "/hotels/${created.id}/menu/items", owner,
+            FoodItemRequest("Idli", price = "20.00"),
+        ).body<FoodItemDto>()
+        assertNull(withoutImage.imageUrl)
     }
 
     @Test

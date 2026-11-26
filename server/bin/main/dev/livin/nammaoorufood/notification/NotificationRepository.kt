@@ -1,6 +1,9 @@
 package dev.livin.nammaoorufood.notification
 
 import dev.livin.nammaoorufood.database.NotificationsTable
+import dev.livin.nammaoorufood.database.OrdersTable
+import dev.livin.nammaoorufood.database.HotelsTable
+import dev.livin.nammaoorufood.database.PickupTokensTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -8,6 +11,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.SortOrder
@@ -23,6 +27,9 @@ enum class NotificationType { ORDER_ACCEPTED, ORDER_REJECTED, ORDER_PREPARING, O
 data class NotificationDto(
     val id: Long,
     val orderId: Long,
+    val hotelName: String? = null,
+    val orderStatus: String? = null,
+    val pickupToken: Int? = null,
     val type: NotificationType,
     val title: String,
     val message: String,
@@ -44,33 +51,59 @@ interface NotificationRepository {
 }
 
 class ExposedNotificationRepository : NotificationRepository {
-    override fun insert(conn: Connection, userId: Long, orderId: Long, type: NotificationType, title: String, message: String): Boolean =
-        NotificationsTable.insertIgnore {
-            it[NotificationsTable.userId] = userId
-            it[NotificationsTable.orderId] = orderId
-            it[NotificationsTable.type] = type
-            it[NotificationsTable.title] = title
-            it[NotificationsTable.message] = message
-        }.insertedCount == 1
+    override fun insert(conn: Connection, userId: Long, orderId: Long, type: NotificationType, title: String, message: String): Boolean {
+        val existing = NotificationsTable.selectAll()
+            .where { (NotificationsTable.userId eq userId) and (NotificationsTable.orderId eq orderId) }
+            .limit(1)
+            .singleOrNull()
+
+        return if (existing != null) {
+            NotificationsTable.update({
+                (NotificationsTable.userId eq userId) and (NotificationsTable.orderId eq orderId)
+            }) {
+                it[NotificationsTable.type] = type
+                it[NotificationsTable.title] = title
+                it[NotificationsTable.message] = message
+                it[NotificationsTable.readAt] = null
+                it[NotificationsTable.createdAt] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
+            } > 0
+        } else {
+            NotificationsTable.insertIgnore {
+                it[NotificationsTable.userId] = userId
+                it[NotificationsTable.orderId] = orderId
+                it[NotificationsTable.type] = type
+                it[NotificationsTable.title] = title
+                it[NotificationsTable.message] = message
+            }.insertedCount == 1
+        }
+    }
 
     override fun list(conn: Connection, userId: Long, unreadOnly: Boolean, limit: Int): List<NotificationDto> =
-        NotificationsTable.selectAll().where {
-            (NotificationsTable.userId eq userId) and
-                if (unreadOnly) NotificationsTable.readAt.isNull() else org.jetbrains.exposed.sql.Op.TRUE
-        }
+        NotificationsTable
+            .leftJoin(OrdersTable, { orderId }, { id })
+            .leftJoin(HotelsTable, { OrdersTable.hotelId }, { id })
+            .leftJoin(PickupTokensTable, { OrdersTable.id }, { orderId })
+            .selectAll().where {
+                (NotificationsTable.userId eq userId) and
+                    if (unreadOnly) NotificationsTable.readAt.isNull() else org.jetbrains.exposed.sql.Op.TRUE
+            }
             .orderBy(NotificationsTable.createdAt to SortOrder.DESC, NotificationsTable.id to SortOrder.DESC)
             .limit(limit)
             .map {
                 NotificationDto(
-                    it[NotificationsTable.id],
-                    it[NotificationsTable.orderId],
-                    it[NotificationsTable.type],
-                    it[NotificationsTable.title],
-                    it[NotificationsTable.message],
-                    it[NotificationsTable.readAt] != null,
-                    it[NotificationsTable.createdAt].toInstant(ZoneOffset.UTC).toString(),
+                    id = it[NotificationsTable.id],
+                    orderId = it[NotificationsTable.orderId],
+                    hotelName = it.getOrNull(HotelsTable.name),
+                    orderStatus = it.getOrNull(OrdersTable.status)?.name,
+                    pickupToken = it.getOrNull(PickupTokensTable.tokenNumber),
+                    type = it[NotificationsTable.type],
+                    title = it[NotificationsTable.title],
+                    message = it[NotificationsTable.message],
+                    read = it[NotificationsTable.readAt] != null,
+                    createdAt = it[NotificationsTable.createdAt].toInstant(ZoneOffset.UTC).toString(),
                 )
             }
+            .distinctBy { it.orderId }
 
     override fun unreadCount(conn: Connection, userId: Long): Int =
         NotificationsTable.selectAll()

@@ -8,6 +8,8 @@ import dev.livin.nammaoorufood.customer.data.errorMessage
 import dev.livin.nammaoorufood.customer.data.toLoad
 import dev.livin.nammaoorufood.network.*
 import dev.livin.nammaoorufood.owner.data.OwnerRepository
+import dev.livin.nammaoorufood.owner.data.ImageKitUploadRepository
+import dev.livin.nammaoorufood.owner.data.ImageUploadFolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +40,9 @@ sealed interface OwnerHotelIntent {
 class OwnerHotelViewModel(
     private val repo: OwnerRepository,
     private val eventBus: LiveEventBus,
+    uploader: ImageKitUploadRepository,
 ) : ViewModel() {
+    val image = OwnerImageEditor(uploader, viewModelScope, ImageUploadFolder.HOTEL)
     private val _state = MutableStateFlow(OwnerHotelState())
     val state: StateFlow<OwnerHotelState> = _state.asStateFlow()
 
@@ -93,12 +97,24 @@ class OwnerHotelViewModel(
 
     private fun createHotel(name: String, description: String, address: String, phone: String) {
         validateHotelForm(name, address)?.let { return _state.update { s -> s.copy(message = it) } }
-        mutate({ repo.createHotel(request(name, description, address, phone)) })
+        mutate({
+            when (val imageUrl = image.resolveUrl()) {
+                is ApiResult.Success -> repo.createHotel(request(name, description, address, phone).copy(imageUrl = imageUrl.value))
+                is ApiResult.Rejected -> imageUrl
+                is ApiResult.NetworkError -> imageUrl
+            }
+        })
     }
 
     private fun updateHotel(id: Long, name: String, description: String, address: String, phone: String) {
         validateHotelForm(name, address)?.let { return _state.update { s -> s.copy(message = it) } }
-        mutate({ repo.updateHotel(id, request(name, description, address, phone)) })
+        mutate({
+            when (val imageUrl = image.resolveUrl()) {
+                is ApiResult.Success -> repo.updateHotel(id, request(name, description, address, phone).copy(imageUrl = imageUrl.value))
+                is ApiResult.Rejected -> imageUrl
+                is ApiResult.NetworkError -> imageUrl
+            }
+        })
     }
 
     private fun setHours(id: Long, rows: List<HoursRow>) {
@@ -283,7 +299,9 @@ class OwnerMenuViewModel(
     private val hotelId: Long,
     private val repo: OwnerRepository,
     private val eventBus: LiveEventBus,
+    uploader: ImageKitUploadRepository,
 ) : ViewModel() {
+    val image = OwnerImageEditor(uploader, viewModelScope, ImageUploadFolder.MENU_ITEM)
     private val _state = MutableStateFlow(OwnerMenuState())
     val state: StateFlow<OwnerMenuState> = _state.asStateFlow()
 
@@ -371,10 +389,16 @@ class OwnerMenuViewModel(
     private fun save(itemId: Long?, name: String, description: String, price: String, categoryId: Long?, available: Boolean, quantityAvailable: Int?, onSaved: () -> Unit) {
         if (_state.value.saving) return
         (validateItemName(name) ?: validatePrice(price))?.let { return _state.update { s -> s.copy(message = it) } }
-        val request = FoodItemRequest(name.trim(), description.trim().ifEmpty { null }, price.trim(), categoryId, available, quantityAvailable)
         _state.update { it.copy(saving = true, message = null) }
         viewModelScope.launch {
-            val r = if (itemId == null) repo.createItem(hotelId, request) else repo.updateItem(hotelId, itemId, request)
+            val r = when (val imageUrl = image.resolveUrl()) {
+                is ApiResult.Success -> {
+                    val request = FoodItemRequest(name.trim(), description.trim().ifEmpty { null }, price.trim(), categoryId, available, quantityAvailable, imageUrl = imageUrl.value)
+                    if (itemId == null) repo.createItem(hotelId, request) else repo.updateItem(hotelId, itemId, request)
+                }
+                is ApiResult.Rejected -> imageUrl
+                is ApiResult.NetworkError -> imageUrl
+            }
             _state.update { it.copy(saving = false, message = if (r is ApiResult.Success) null else r.errorMessage()) }
             if (r is ApiResult.Success) {
                 refresh()

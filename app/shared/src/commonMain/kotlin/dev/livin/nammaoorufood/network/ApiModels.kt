@@ -12,6 +12,9 @@ data class UserDto(val id: Long, val username: String, val displayName: String, 
 data class LoginRequest(val username: String, val password: String)
 
 @Serializable
+data class RegisterRequest(val username: String, val password: String, val displayName: String, val phone: String? = null)
+
+@Serializable
 data class RefreshRequest(val refreshToken: String)
 
 @Serializable
