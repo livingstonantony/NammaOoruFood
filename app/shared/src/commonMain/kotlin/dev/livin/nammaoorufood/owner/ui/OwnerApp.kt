@@ -15,11 +15,18 @@ import dev.livin.nammaoorufood.network.UserDto
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-enum class OwnerTab(val title: String, val icon: String) {
-    Dashboard("Dashboard", "📊"),
-    Orders("Orders", "📋"),
-    Menu("Menu", "🍽️"),
-    Hotel("Hotel", "🏪"),
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.ui.graphics.vector.ImageVector
+
+enum class OwnerTab(val title: String, val icon: ImageVector) {
+    Dashboard("Dashboard", Icons.Default.Dashboard),
+    Orders("Orders", Icons.AutoMirrored.Filled.Assignment),
+    Menu("Menu", Icons.Default.RestaurantMenu),
+    Hotel("Hotel", Icons.Default.Storefront),
 }
 
 @Composable
@@ -52,7 +59,7 @@ private fun OwnerShell(user: UserDto, hotel: HotelDto, hotelVm: OwnerHotelViewMo
                     NavigationBarItem(
                         selected = tab == t,
                         onClick = { tab = t },
-                        icon = { Text(t.icon, style = MaterialTheme.typography.titleMedium) },
+                        icon = { Icon(t.icon, contentDescription = t.title) },
                         label = { Text(t.title, style = MaterialTheme.typography.labelMedium) },
                         alwaysShowLabel = true,
                     )

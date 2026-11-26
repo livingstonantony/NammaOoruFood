@@ -6,6 +6,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,6 +62,7 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                     items(m.data.items, key = { it.id }) { item ->
                         val busy = item.id in state.busy
                         val stock = item.quantityAvailable
+
                         AppCard {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 RemoteImage(item.imageUrl, item.name, Modifier.size(64.dp))
@@ -64,15 +70,21 @@ fun OwnerMenuScreen(vm: OwnerMenuViewModel) {
                                 Column(Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text("₹${item.price}", style = MaterialTheme.typography.bodyLarge)
-                                    Text(
-                                        when {
-                                            stock != null && stock <= 0 -> "🔴 Out of stock (0 left)"
-                                            stock != null -> "📦 Stock: $stock left"
-                                            item.available -> "🟢 Available (Unlimited)"
-                                            else -> "🔴 Sold out"
-                                        },
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        val (icon, label) = when {
+                                            stock != null && stock <= 0 -> Icons.Default.Cancel to "Out of stock (0 left)"
+                                            stock != null -> Icons.Default.Inventory2 to "Stock: $stock left"
+                                            item.available -> Icons.Default.CheckCircle to "Available (Unlimited)"
+                                            else -> Icons.Default.Cancel to "Sold out"
+                                        }
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (item.available && (stock == null || stock > 0)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                        )
+                                        Text(label, style = MaterialTheme.typography.labelLarge)
+                                    }
                                 }
                                 Switch(checked = item.available, enabled = !busy, onCheckedChange = { vm.onIntent(OwnerMenuIntent.ToggleAvailability(item)) })
                             }
@@ -211,7 +223,7 @@ private fun StockControlRow(
                             editingDirectly = false
                         },
                         enabled = !busy,
-                    ) { Text("✓", fontWeight = FontWeight.Bold) }
+                    ) { Icon(Icons.Default.Check, contentDescription = "Apply stock quantity") }
                 }
             } else {
                 OutlinedButton(
