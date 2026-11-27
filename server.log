@@ -1,0 +1,545 @@
+
+> Configure project :app:shared
+w: ⚠️ Default Kotlin Hierarchy Template Not Applied Correctly
+The Default Kotlin Hierarchy Template was not applied to 'project ':app:shared'':
+Explicit .dependsOn() edges were configured for the following source sets:
+[androidMain, iosArm64Main, iosMain, iosSimulatorArm64Main, jsMain, jvmMain, nonWebMain, wasmJsMain, webMain]
+
+Consider removing dependsOn-calls or disabling the default template by adding
+    'kotlin.mpp.applyDefaultHierarchyTemplate=false'
+to your gradle.properties
+Solution: Please remove the dependsOn-calls or disable the default template.
+Learn more about hierarchy templates: https://kotl.in/hierarchy-template
+
+
+> Task :core:kmpPartiallyResolvedDependenciesChecker
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:compileKotlinJvm UP-TO-DATE
+> Task :core:compileJvmMainJava NO-SOURCE
+> Task :core:jvmProcessResources NO-SOURCE
+> Task :core:processJvmMainResources SKIPPED
+> Task :core:jvmMainClasses UP-TO-DATE
+> Task :core:jvmJar UP-TO-DATE
+> Task :server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :server:compileKotlin UP-TO-DATE
+> Task :server:compileJava NO-SOURCE
+> Task :server:processResources
+> Task :server:classes
+
+> Task :server:run
+2026-11-25 21:55:10.554 [main] DEBUG io.ktor.server.config.ConfigLoader - Trying ConfigLoader: HoconConfigLoader
+2026-11-25 21:55:10.593 [main] DEBUG io.ktor.server.config.ConfigLoader - Configuration loaded successfully using HoconConfigLoader from path: application.conf
+2026-11-25 21:55:10.713 [main] INFO  io.ktor.server.Application - Autoreload is disabled because the development mode is off.
+2026-11-25 21:55:10.953 [main] INFO  org.flywaydb.core.FlywayExecutor - Environment: default
+2026-11-25 21:55:10.953 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:mysql:******** (MySQL 26.7)
+2026-11-25 21:55:10.989 [main] WARN  o.f.c.i.database.base.Database - Using MySQL 26.7 which is newer than the version Flyway has been verified with. The latest verified version of MySQL is 9.4.
+2026-11-25 21:55:11.003 [main] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Repair of failed migration in Schema History table `nammaoorufood`.`flyway_schema_history` not necessary as table doesn't exist.
+2026-11-25 21:55:11.012 [main] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table `nammaoorufood`.`flyway_schema_history` does not exist yet
+2026-11-25 21:55:11.015 [main] INFO  o.f.core.internal.command.DbRepair - Successfully repaired schema history table `nammaoorufood`.`flyway_schema_history` (execution time 00:00.020s).
+2026-11-25 21:55:11.028 [main] INFO  org.flywaydb.core.FlywayExecutor - Environment: default
+2026-11-25 21:55:11.029 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: jdbc:mysql:******** (MySQL 26.7)
+2026-11-25 21:55:11.039 [main] WARN  o.f.c.i.database.base.Database - Using MySQL 26.7 which is newer than the version Flyway has been verified with. The latest verified version of MySQL is 9.4.
+2026-11-25 21:55:11.053 [main] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Schema history table `nammaoorufood`.`flyway_schema_history` does not exist yet
+2026-11-25 21:55:11.054 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 1 migration (execution time 00:00.006s)
+2026-11-25 21:55:11.081 [main] INFO  org.flywaydb.core.Flyway - All configured schemas are empty; a baseline marker will not be added to Flyway's schema history table. A baseline or migration script with a lower version than the baseline version may execute if available. Check the Schemas parameter if this is not intended. See https://help.red-gate.com/help/flyway-cli13/help_11.aspx?topic=baseline-on-migrate for more info
+2026-11-25 21:55:11.085 [main] INFO  o.f.c.i.s.JdbcTableSchemaHistory - Creating Schema History table `nammaoorufood`.`flyway_schema_history` ...
+2026-11-25 21:55:11.146 [main] INFO  o.f.core.internal.command.DbMigrate - Current version of schema `nammaoorufood`: << Empty Schema >>
+2026-11-25 21:55:11.171 [main] INFO  o.f.core.internal.command.DbMigrate - Migrating schema `nammaoorufood` to version "1 - initial schema"
+2026-11-25 21:55:11.279 [main] INFO  o.f.core.internal.command.DbMigrate - Successfully applied 1 migration to schema `nammaoorufood`, now at version v1 (execution time 00:00.089s)
+2026-11-25 21:55:11.284 [main] DEBUG com.zaxxer.hikari.HikariConfig - namma-ooru-food-db - configuration:
+2026-11-25 21:55:11.286 [main] DEBUG com.zaxxer.hikari.HikariConfig - allowPoolSuspension.............false
+2026-11-25 21:55:11.286 [main] DEBUG com.zaxxer.hikari.HikariConfig - autoCommit......................false
+2026-11-25 21:55:11.286 [main] DEBUG com.zaxxer.hikari.HikariConfig - catalog.........................none
+2026-11-25 21:55:11.286 [main] DEBUG com.zaxxer.hikari.HikariConfig - connectionInitSql..............."SET time_zone = '+00:00'"
+2026-11-25 21:55:11.286 [main] DEBUG com.zaxxer.hikari.HikariConfig - connectionTestQuery.............none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - connectionTimeout...............10000
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - credentials.....................com.zaxxer.hikari.util.Credentials@49c8f6e8
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - credentialsProvider.............none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - credentialsProviderClassName....none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - dataSource......................none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - dataSourceClassName.............none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - dataSourceJNDI..................none
+2026-11-25 21:55:11.287 [main] DEBUG com.zaxxer.hikari.HikariConfig - dataSourceProperties............{password=<masked>}
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - driverClassName.................none
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - exceptionOverride...............none
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - exceptionOverrideClassName......none
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - healthCheckProperties...........{}
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - healthCheckRegistry.............none
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - idleTimeout.....................600000
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - initializationFailTimeout.......10000
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - isolateInternalQueries..........false
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - jdbcUrl.........................jdbc:mysql://localhost:3306/nammaoorufood?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - keepaliveTime...................120000
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - leakDetectionThreshold..........0
+2026-11-25 21:55:11.288 [main] DEBUG com.zaxxer.hikari.HikariConfig - maxLifetime.....................1800000
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - maximumPoolSize.................10
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - metricRegistry..................none
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - metricsTrackerFactory...........none
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - minimumIdle.....................2
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - password........................<masked>
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - poolName........................"namma-ooru-food-db"
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - readOnly........................false
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - registerMbeans..................false
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - scheduledExecutor...............none
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - schema..........................none
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - threadFactory...................internal
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - transactionIsolation............"TRANSACTION_REPEATABLE_READ"
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - username........................"root"
+2026-11-25 21:55:11.289 [main] DEBUG com.zaxxer.hikari.HikariConfig - validationTimeout...............5000
+2026-11-25 21:55:11.293 [main] INFO  com.zaxxer.hikari.HikariDataSource - namma-ooru-food-db - Starting...
+2026-11-25 21:55:11.296 [main] DEBUG c.z.hikari.util.DriverDataSource - Loaded driver with class name com.mysql.cj.jdbc.Driver for jdbcUrl=jdbc:mysql://localhost:3306/nammaoorufood?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+2026-11-25 21:55:11.299 [main] DEBUG com.zaxxer.hikari.pool.PoolBase - namma-ooru-food-db - Attempting to create/setup new connection (64dd4eeb-df0e-47c6-95cb-1044b7c80e31)
+2026-11-25 21:55:11.304 [main] DEBUG com.zaxxer.hikari.pool.PoolBase - namma-ooru-food-db - Established new connection (64dd4eeb-df0e-47c6-95cb-1044b7c80e31)
+2026-11-25 21:55:11.305 [main] INFO  com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Added connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec
+2026-11-25 21:55:11.305 [main] INFO  com.zaxxer.hikari.HikariDataSource - namma-ooru-food-db - Start completed.
+2026-11-25 21:55:11.406 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=1/10, idle=1/2, active=0, waiting=0)
+2026-11-25 21:55:11.406 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=1/10, idle=1/2, active=0, waiting=0)
+2026-11-25 21:55:11.407 [namma-ooru-food-db:connection-adder] DEBUG com.zaxxer.hikari.pool.PoolBase - namma-ooru-food-db - Attempting to create/setup new connection (b569670a-5345-45b7-8118-d8237ca822ad)
+2026-11-25 21:55:11.411 [namma-ooru-food-db:connection-adder] DEBUG com.zaxxer.hikari.pool.PoolBase - namma-ooru-food-db - Established new connection (b569670a-5345-45b7-8118-d8237ca822ad)
+2026-11-25 21:55:11.411 [namma-ooru-food-db:connection-adder] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Added connection com.mysql.cj.jdbc.ConnectionImpl@74c89b98
+2026-11-25 21:55:11.447 [namma-ooru-food-db:connection-adder] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After adding stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:55:11.784 [main] WARN  d.l.nammaoorufood.auth.AccountSeeder - Seeding development accounts (local/test environments only)
+2026-11-25 21:55:11.795 [DefaultDispatcher-worker-1] DEBUG c.zaxxer.hikari.pool.ProxyConnection - namma-ooru-food-db - Executed rollback on connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec due to dirty commit state on close().
+2026-11-25 21:55:11.829 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT users.id, users.username, users.password_hash, users.`role`, users.display_name, users.phone, users.active, users.created_at, users.updated_at FROM users WHERE users.username = 'admin' LIMIT 1
+2026-11-25 21:55:12.179 [DefaultDispatcher-worker-1] DEBUG Exposed - INSERT INTO users (username, password_hash, `role`, display_name, phone) VALUES ('admin', '$2a$12$oTyL3MiKVxyXAiu/e2ziwOIYPISTZZrieEpyIx7vhnbWtUO1qPLSS', 'ADMIN', 'Dev Admin', NULL)
+2026-11-25 21:55:12.185 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT users.id, users.username, users.password_hash, users.`role`, users.display_name, users.phone, users.active, users.created_at, users.updated_at FROM users WHERE users.username = 'owner' LIMIT 1
+2026-11-25 21:55:12.505 [DefaultDispatcher-worker-1] DEBUG Exposed - INSERT INTO users (username, password_hash, `role`, display_name, phone) VALUES ('owner', '$2a$12$03V2j6A1dERl6Z3ZVW4vRuhCKr8bOe7pWUhBKQ9PGz3VdWHVMzMeW', 'HOTEL_OWNER', 'Dev Owner', NULL)
+2026-11-25 21:55:12.509 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT users.id, users.username, users.password_hash, users.`role`, users.display_name, users.phone, users.active, users.created_at, users.updated_at FROM users WHERE users.username = 'customer' LIMIT 1
+2026-11-25 21:55:12.893 [DefaultDispatcher-worker-1] DEBUG Exposed - INSERT INTO users (username, password_hash, `role`, display_name, phone) VALUES ('customer', '$2a$12$qX9rUXs3MyNjLMz7PDveq.imiL0KzHkVb95vaBWwJUOofO2xE4US2', 'CUSTOMER', 'Dev Customer', NULL)
+2026-11-25 21:55:12.907 [DefaultDispatcher-worker-3] DEBUG Exposed - DELETE FROM auth_sessions WHERE (auth_sessions.expires_at < '2026-11-18 16:25:12.898279') OR (auth_sessions.revoked_at < '2026-11-18 16:25:12.898279')
+2026-11-25 21:55:12.910 [DefaultDispatcher-worker-3] DEBUG Exposed - DELETE FROM notifications WHERE notifications.created_at < '2026-08-27 16:25:12.898279'
+2026-11-25 21:55:13.024 [main] INFO  io.ktor.server.Application - Application started in 2.414 seconds.
+2026-11-25 21:55:13.117 [DefaultDispatcher-worker-1] INFO  io.ktor.server.Application - Responding at http://0.0.0.0:8080
+2026-11-25 21:55:26.914 [eventLoopGroupProxy-4-1] TRACE io.ktor.server.plugins.cors.CORS - GET /health: Start handler
+2026-11-25 21:55:26.914 [eventLoopGroupProxy-4-1] TRACE io.ktor.server.plugins.cors.CORS - GET /health: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:55:26.919 [eventLoopGroupProxy-4-1] TRACE io.ktor.server.routing.Routing - Trace for [health]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:1 -> SUCCESS @ /health
+    /health [(method:GET)], segment:1 -> SUCCESS @ /health [(method:GET)]
+Matched routes:
+  "" -> "health" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS @ /health [(method:GET)]
+2026-11-25 21:55:26.936 [eventLoopGroupProxy-4-1] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /health
+2026-11-25 21:55:41.412 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:55:41.412 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:55:41.412 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:56:11.418 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:56:11.419 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:56:11.420 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:56:29.187 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /auth/refresh: Start handler
+2026-11-25 21:56:29.188 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /auth/refresh: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:56:29.189 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [auth, refresh]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:1 -> SUCCESS @ /auth
+    /auth [(RateLimit auth-attempts)], segment:1 -> SUCCESS @ /auth [(RateLimit auth-attempts)]
+      /auth/register [(RateLimit auth-attempts)], segment:1 -> FAILURE "Selector didn't match" @ /auth/register [(RateLimit auth-attempts)]
+      /auth/login [(RateLimit auth-attempts)], segment:1 -> FAILURE "Selector didn't match" @ /auth/login [(RateLimit auth-attempts)]
+      /auth/refresh [(RateLimit auth-attempts)], segment:2 -> SUCCESS @ /auth/refresh [(RateLimit auth-attempts)]
+        /auth/refresh [(RateLimit auth-attempts), (method:POST)], segment:2 -> SUCCESS @ /auth/refresh [(RateLimit auth-attempts), (method:POST)]
+    /auth/logout, segment:1 -> FAILURE "Selector didn't match" @ /auth/logout
+    /auth [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /auth [(authenticate jwt-auth)]
+      /auth/me [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /auth/me [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "auth" -> "(RateLimit auth-attempts)" -> "refresh" -> "(method:POST)"
+Routing resolve result:
+  SUCCESS @ /auth/refresh [(RateLimit auth-attempts), (method:POST)]
+2026-11-25 21:56:29.190 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Using rate limit RateLimitName(name=auth-attempts) for /auth/refresh
+2026-11-25 21:56:29.190 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Using key=kotlin.Unit and weight=1 for /auth/refresh
+2026-11-25 21:56:29.194 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Allowing /auth/refresh
+2026-11-25 21:56:29.200 [eventLoopGroupProxy-4-2] TRACE i.k.server.engine.DefaultTransform - No Default Transformations found for class io.ktor.utils.io.ByteChannel and expected type TypeInfo(dev.livin.nammaoorufood.auth.RefreshRequest) for call /auth/refresh
+2026-11-25 21:56:29.213 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.refresh_token_hash = '3d763148dfb8e528b51c57a1f0b23c232ea4714aeeefdfb598c492bd41546e04') AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:26:29.210861') LIMIT 1 FOR UPDATE
+2026-11-25 21:56:29.215 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - Call /auth/refresh failed with cause dev.livin.nammaoorufood.plugins.UnauthorizedException: Session expired
+2026-11-25 21:56:29.230 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - Executing (io.ktor.server.application.ApplicationCall, dev.livin.nammaoorufood.plugins.ApiException) -> kotlin.Unit for exception dev.livin.nammaoorufood.plugins.UnauthorizedException: Session expired for call /auth/refresh
+2026-11-25 21:56:41.423 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:56:41.426 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:56:41.427 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:56:46.977 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /auth/login: Start handler
+2026-11-25 21:56:46.978 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /auth/login: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:56:46.979 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [auth, login]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:1 -> SUCCESS @ /auth
+    /auth [(RateLimit auth-attempts)], segment:1 -> SUCCESS @ /auth [(RateLimit auth-attempts)]
+      /auth/register [(RateLimit auth-attempts)], segment:1 -> FAILURE "Selector didn't match" @ /auth/register [(RateLimit auth-attempts)]
+      /auth/login [(RateLimit auth-attempts)], segment:2 -> SUCCESS @ /auth/login [(RateLimit auth-attempts)]
+        /auth/login [(RateLimit auth-attempts), (method:POST)], segment:2 -> SUCCESS @ /auth/login [(RateLimit auth-attempts), (method:POST)]
+      /auth/refresh [(RateLimit auth-attempts)], segment:1 -> FAILURE "Selector didn't match" @ /auth/refresh [(RateLimit auth-attempts)]
+    /auth/logout, segment:1 -> FAILURE "Selector didn't match" @ /auth/logout
+    /auth [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /auth [(authenticate jwt-auth)]
+      /auth/me [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /auth/me [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "auth" -> "(RateLimit auth-attempts)" -> "login" -> "(method:POST)"
+Routing resolve result:
+  SUCCESS @ /auth/login [(RateLimit auth-attempts), (method:POST)]
+2026-11-25 21:56:46.979 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Using rate limit RateLimitName(name=auth-attempts) for /auth/login
+2026-11-25 21:56:46.979 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Using key=kotlin.Unit and weight=1 for /auth/login
+2026-11-25 21:56:46.982 [eventLoopGroupProxy-4-2] TRACE i.k.s.plugins.ratelimit.RateLimit - Allowing /auth/login
+2026-11-25 21:56:46.986 [eventLoopGroupProxy-4-2] TRACE i.k.server.engine.DefaultTransform - No Default Transformations found for class io.ktor.utils.io.ByteChannel and expected type TypeInfo(dev.livin.nammaoorufood.auth.LoginRequest) for call /auth/login
+2026-11-25 21:56:46.993 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT users.id, users.username, users.password_hash, users.`role`, users.display_name, users.phone, users.active, users.created_at, users.updated_at FROM users WHERE users.username = 'owner' LIMIT 1
+2026-11-25 21:56:47.310 [DefaultDispatcher-worker-1] DEBUG Exposed - INSERT INTO auth_sessions (user_id, refresh_token_hash, expires_at) VALUES (2, '126d200237994e3a9688710f91d7e8d45df413be2a71bd4e654acec623767642', '2026-12-25 16:26:47.307603')
+2026-11-25 21:56:47.337 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /auth/login
+2026-11-25 21:56:47.484 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/hotels: Start handler
+2026-11-25 21:56:47.484 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/hotels: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:56:47.485 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [owner, hotels]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/hotels [(authenticate jwt-auth)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth)]
+        /owner/hotels [(authenticate jwt-auth), (method:GET)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:GET)]
+        /owner/hotels [(authenticate jwt-auth), (method:POST)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels [(authenticate jwt-auth), (method:POST)]
+        /owner/hotels/{hotelId} [(authenticate jwt-auth)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels/{hotelId} [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/orders [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/orders [(authenticate jwt-auth)]
+      /owner/dashboard [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/dashboard [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "owner" -> "hotels" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:GET)]
+2026-11-25 21:56:47.488 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /owner/hotels with jwt-auth
+2026-11-25 21:56:47.509 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:26:47.507627') LIMIT 1
+2026-11-25 21:56:47.510 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /owner/hotels with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:56:47.523 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT hotels.id, hotels.owner_id, hotels.`name`, hotels.description, hotels.address, hotels.phone, hotels.approval_status, hotels.accepting_orders, hotels.image_url, hotels.created_at, hotels.updated_at FROM hotels WHERE hotels.owner_id = 2 ORDER BY hotels.`name` ASC
+2026-11-25 21:56:47.531 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /owner/hotels
+2026-11-25 21:56:47.541 [eventLoopGroupProxy-4-3] TRACE io.ktor.server.plugins.cors.CORS - GET /ws/events: Start handler
+2026-11-25 21:56:47.541 [eventLoopGroupProxy-4-3] TRACE io.ktor.server.plugins.cors.CORS - GET /ws/events: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:56:47.542 [eventLoopGroupProxy-4-3] TRACE io.ktor.server.routing.Routing - Trace for [ws, events]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:1 -> SUCCESS @ /ws
+    /ws/events, segment:2 -> SUCCESS @ /ws/events
+      /ws/events [(method:GET)], segment:2 -> SUCCESS @ /ws/events [(method:GET)]
+        /ws/events [(method:GET), (header:Connection = Upgrade)], segment:2 -> SUCCESS @ /ws/events [(method:GET), (header:Connection = Upgrade)]
+          /ws/events [(method:GET), (header:Connection = Upgrade), (header:Upgrade = websocket)], segment:2 -> SUCCESS @ /ws/events [(method:GET), (header:Connection = Upgrade), (header:Upgrade = websocket)]
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "ws" -> "events" -> "(method:GET)" -> "(header:Connection = Upgrade)" -> "(header:Upgrade = websocket)"
+Routing resolve result:
+  SUCCESS @ /ws/events [(method:GET), (header:Connection = Upgrade), (header:Upgrade = websocket)]
+2026-11-25 21:56:47.546 [eventLoopGroupProxy-4-3] TRACE i.k.s.p.c.ContentNegotiation - Skipping because body is already converted.
+2026-11-25 21:56:47.547 [eventLoopGroupProxy-4-3] TRACE i.k.s.p.statuspages.StatusPages - No handler found for status code 101 Switching Protocols for call: /ws/events
+2026-11-25 21:56:47.562 [eventLoopGroupProxy-3-2] TRACE io.ktor.websocket.WebSocket - Starting default WebSocketSession(io.ktor.websocket.DefaultWebSocketSessionImpl@1e881105) with negotiated extensions: 
+2026-11-25 21:56:47.564 [eventLoopGroupProxy-3-2] TRACE io.ktor.server.websocket.WebSockets - Starting websocket session for /ws/events
+2026-11-25 21:56:47.565 [eventLoopGroupProxy-3-2] INFO  d.l.n.websocket.ServerEventBus - WebSocket client connected. Total active: 1
+2026-11-25 21:57:01.904 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@74c89b98 is alive
+2026-11-25 21:57:02.383 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec is alive
+2026-11-25 21:57:11.432 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:57:11.432 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:57:11.432 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:57:13.871 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /owner/hotels: Start handler
+2026-11-25 21:57:13.871 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - POST /owner/hotels: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:57:13.872 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [owner, hotels]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/hotels [(authenticate jwt-auth)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth)]
+        /owner/hotels [(authenticate jwt-auth), (method:GET)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels [(authenticate jwt-auth), (method:GET)]
+        /owner/hotels [(authenticate jwt-auth), (method:POST)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:POST)]
+        /owner/hotels/{hotelId} [(authenticate jwt-auth)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels/{hotelId} [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/orders [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/orders [(authenticate jwt-auth)]
+      /owner/dashboard [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/dashboard [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "owner" -> "hotels" -> "(method:POST)"
+Routing resolve result:
+  SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:POST)]
+2026-11-25 21:57:13.873 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /owner/hotels with jwt-auth
+2026-11-25 21:57:13.877 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:27:13.876236') LIMIT 1
+2026-11-25 21:57:13.878 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /owner/hotels with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:57:13.881 [eventLoopGroupProxy-4-2] TRACE i.k.server.engine.DefaultTransform - No Default Transformations found for class io.ktor.utils.io.ByteChannel and expected type TypeInfo(dev.livin.nammaoorufood.hotel.HotelRequest) for call /owner/hotels
+2026-11-25 21:57:13.887 [DefaultDispatcher-worker-1] DEBUG Exposed - INSERT INTO hotels (owner_id, `name`, description, address, phone, image_url) VALUES (2, 'Deva', NULL, 'Church street', NULL, NULL)
+2026-11-25 21:57:13.892 [DefaultDispatcher-worker-1] TRACE io.ktor.websocket.WebSocket - Sending Frame TEXT (fin=true, buffer len = 31) from session io.ktor.websocket.DefaultWebSocketSessionImpl@1e881105
+2026-11-25 21:57:13.893 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No handler found for status code 201 Created for call: /owner/hotels
+2026-11-25 21:57:13.920 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/hotels: Start handler
+2026-11-25 21:57:13.920 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/hotels: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:57:13.921 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [owner, hotels]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/hotels [(authenticate jwt-auth)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth)]
+        /owner/hotels [(authenticate jwt-auth), (method:GET)], segment:2 -> SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:GET)]
+        /owner/hotels [(authenticate jwt-auth), (method:POST)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels [(authenticate jwt-auth), (method:POST)]
+        /owner/hotels/{hotelId} [(authenticate jwt-auth)], segment:2 -> FAILURE "Selector didn't match" @ /owner/hotels/{hotelId} [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/orders [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/orders [(authenticate jwt-auth)]
+      /owner/dashboard [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/dashboard [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "owner" -> "hotels" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS @ /owner/hotels [(authenticate jwt-auth), (method:GET)]
+2026-11-25 21:57:13.921 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /owner/hotels with jwt-auth
+2026-11-25 21:57:13.923 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:27:13.922596') LIMIT 1
+2026-11-25 21:57:13.924 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /owner/hotels with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:57:13.925 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT hotels.id, hotels.owner_id, hotels.`name`, hotels.description, hotels.address, hotels.phone, hotels.approval_status, hotels.accepting_orders, hotels.image_url, hotels.created_at, hotels.updated_at FROM hotels WHERE hotels.owner_id = 2 ORDER BY hotels.`name` ASC
+2026-11-25 21:57:13.935 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT hotel_operating_hours.id, hotel_operating_hours.hotel_id, hotel_operating_hours.day_of_week, hotel_operating_hours.opens_at, hotel_operating_hours.closes_at FROM hotel_operating_hours WHERE hotel_operating_hours.hotel_id = 1 ORDER BY hotel_operating_hours.day_of_week ASC
+2026-11-25 21:57:13.936 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /owner/hotels
+2026-11-25 21:57:14.053 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/orders?hotelId=1&status=PLACED&pageSize=50: Start handler
+2026-11-25 21:57:14.053 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/orders?hotelId=1&status=PLACED&pageSize=50: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:57:14.053 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [owner, orders]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/hotels [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/hotels [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/orders [(authenticate jwt-auth)], segment:2 -> SUCCESS @ /owner/orders [(authenticate jwt-auth)]
+        /owner/orders [(authenticate jwt-auth), (method:GET)], segment:2 -> SUCCESS @ /owner/orders [(authenticate jwt-auth), (method:GET)]
+      /owner/dashboard [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/dashboard [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "owner" -> "orders" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS @ /owner/orders [(authenticate jwt-auth), (method:GET)]
+2026-11-25 21:57:14.054 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /owner/orders?hotelId=1&status=PLACED&pageSize=50 with jwt-auth
+2026-11-25 21:57:14.058 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:27:14.056403') LIMIT 1
+2026-11-25 21:57:14.058 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /owner/orders?hotelId=1&status=PLACED&pageSize=50 with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:57:14.068 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT orders.id, orders.customer_id, orders.hotel_id, orders.status, orders.total, orders.note, orders.idempotency_key, orders.created_at, orders.updated_at, hotels.id, hotels.owner_id, hotels.`name`, hotels.description, hotels.address, hotels.phone, hotels.approval_status, hotels.accepting_orders, hotels.image_url, hotels.created_at, hotels.updated_at, users.id, users.username, users.password_hash, users.`role`, users.display_name, users.phone, users.active, users.created_at, users.updated_at, pickup_tokens.id, pickup_tokens.order_id, pickup_tokens.hotel_id, pickup_tokens.token_date, pickup_tokens.token_number, pickup_tokens.created_at FROM orders INNER JOIN hotels ON orders.hotel_id = hotels.id INNER JOIN users ON orders.customer_id = users.id LEFT JOIN pickup_tokens ON orders.id = pickup_tokens.order_id WHERE (hotels.owner_id = 2) AND (orders.hotel_id = 1) AND (orders.status = 'PLACED') ORDER BY orders.created_at DESC, orders.id DESC LIMIT 50
+2026-11-25 21:57:14.070 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT COUNT(*) FROM orders INNER JOIN hotels ON orders.hotel_id = hotels.id WHERE (hotels.owner_id = 2) AND (orders.hotel_id = 1) AND (orders.status = 'PLACED')
+2026-11-25 21:57:14.074 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /owner/orders?hotelId=1&status=PLACED&pageSize=50
+2026-11-25 21:57:21.626 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/dashboard: Start handler
+2026-11-25 21:57:21.627 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /owner/dashboard: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:57:21.627 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [owner, dashboard]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /hotels [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/hotels [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/hotels [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /owner [(authenticate jwt-auth)]
+      /owner/orders [(authenticate jwt-auth)], segment:1 -> FAILURE "Selector didn't match" @ /owner/orders [(authenticate jwt-auth)]
+      /owner/dashboard [(authenticate jwt-auth)], segment:2 -> SUCCESS @ /owner/dashboard [(authenticate jwt-auth)]
+        /owner/dashboard [(authenticate jwt-auth), (method:GET)], segment:2 -> SUCCESS @ /owner/dashboard [(authenticate jwt-auth), (method:GET)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "owner" -> "dashboard" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS @ /owner/dashboard [(authenticate jwt-auth), (method:GET)]
+2026-11-25 21:57:21.627 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /owner/dashboard with jwt-auth
+2026-11-25 21:57:21.636 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:27:21.635849') LIMIT 1
+2026-11-25 21:57:21.637 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /owner/dashboard with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:57:21.643 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT orders.status, COUNT(orders.id) FROM orders INNER JOIN hotels ON orders.hotel_id = hotels.id WHERE (hotels.owner_id = 2) AND ((orders.status IN ('PLACED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP')) OR (orders.updated_at >= '2026-11-24 18:30')) GROUP BY orders.status
+2026-11-25 21:57:21.644 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT SUM(orders.total) FROM orders INNER JOIN hotels ON orders.hotel_id = hotels.id WHERE (hotels.owner_id = 2) AND (orders.status = 'COMPLETED') AND (orders.updated_at >= '2026-11-24 18:30')
+2026-11-25 21:57:21.646 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /owner/dashboard
+2026-11-25 21:57:22.870 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /hotels/1/menu: Start handler
+2026-11-25 21:57:22.870 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.plugins.cors.CORS - GET /hotels/1/menu: Skip CORS handler because request lacks the Origin header
+2026-11-25 21:57:22.873 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.routing.Routing - Trace for [hotels, 1, menu]
+/, segment:0 -> SUCCESS @ /
+  /ws, segment:0 -> FAILURE "Selector didn't match" @ /ws
+  /auth, segment:0 -> FAILURE "Selector didn't match" @ /auth
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /api [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /api [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /hotels [(authenticate jwt-auth)], segment:1 -> SUCCESS @ /hotels [(authenticate jwt-auth)]
+      /hotels [(authenticate jwt-auth), (method:GET)], segment:1 -> FAILURE "Not all segments matched" @ /hotels [(authenticate jwt-auth), (method:GET)]
+      /hotels/{hotelId} [(authenticate jwt-auth)], segment:2 -> SUCCESS; Parameters [hotelId=[1]] @ /hotels/{hotelId} [(authenticate jwt-auth)]
+        /hotels/{hotelId} [(authenticate jwt-auth), (method:GET)], segment:2 -> FAILURE "Not all segments matched" @ /hotels/{hotelId} [(authenticate jwt-auth), (method:GET)]
+        /hotels/{hotelId}/menu [(authenticate jwt-auth)], segment:3 -> SUCCESS @ /hotels/{hotelId}/menu [(authenticate jwt-auth)]
+          /hotels/{hotelId}/menu [(authenticate jwt-auth), (method:GET)], segment:3 -> SUCCESS @ /hotels/{hotelId}/menu [(authenticate jwt-auth), (method:GET)]
+          /hotels/{hotelId}/menu/categories [(authenticate jwt-auth)], segment:3 -> FAILURE "Selector didn't match" @ /hotels/{hotelId}/menu/categories [(authenticate jwt-auth)]
+          /hotels/{hotelId}/menu/items [(authenticate jwt-auth)], segment:3 -> FAILURE "Selector didn't match" @ /hotels/{hotelId}/menu/items [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /orders [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /orders [(authenticate jwt-auth)]
+    /owner [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /owner [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /notifications [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /notifications [(authenticate jwt-auth)]
+  / [(authenticate jwt-auth)], segment:0 -> SUCCESS @ / [(authenticate jwt-auth)]
+    /admin [(authenticate jwt-auth)], segment:0 -> FAILURE "Selector didn't match" @ /admin [(authenticate jwt-auth)]
+  /swagger, segment:0 -> FAILURE "Selector didn't match" @ /swagger
+  /health, segment:0 -> FAILURE "Selector didn't match" @ /health
+Matched routes:
+  "" -> "(authenticate jwt-auth)" -> "hotels" -> "{hotelId}" -> "menu" -> "(method:GET)"
+Routing resolve result:
+  SUCCESS; Parameters [hotelId=[1]] @ /hotels/{hotelId}/menu [(authenticate jwt-auth), (method:GET)]
+2026-11-25 21:57:22.874 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Trying to authenticate /hotels/1/menu with jwt-auth
+2026-11-25 21:57:22.879 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT auth_sessions.id, auth_sessions.user_id, auth_sessions.refresh_token_hash, auth_sessions.expires_at, auth_sessions.revoked_at, auth_sessions.created_at FROM auth_sessions WHERE (auth_sessions.id = 1) AND (auth_sessions.revoked_at IS NULL) AND (auth_sessions.expires_at > '2026-11-25 16:27:22.877888') LIMIT 1
+2026-11-25 21:57:22.880 [eventLoopGroupProxy-4-2] TRACE io.ktor.server.auth.Authentication - Authentication succeeded for /hotels/1/menu with provider io.ktor.server.auth.jwt.JWTAuthenticationProvider@7ba0b0a2
+2026-11-25 21:57:22.884 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT hotels.id, hotels.owner_id, hotels.`name`, hotels.description, hotels.address, hotels.phone, hotels.approval_status, hotels.accepting_orders, hotels.image_url, hotels.created_at, hotels.updated_at FROM hotels WHERE hotels.id = 1 LIMIT 1
+2026-11-25 21:57:22.886 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT menu_categories.id, menu_categories.hotel_id, menu_categories.`name`, menu_categories.sort_order FROM menu_categories WHERE menu_categories.hotel_id = 1 ORDER BY menu_categories.sort_order ASC, menu_categories.`name` ASC
+2026-11-25 21:57:22.889 [DefaultDispatcher-worker-1] DEBUG Exposed - SELECT food_items.id, food_items.hotel_id, food_items.category_id, food_items.`name`, food_items.description, food_items.price, food_items.available, food_items.quantity_available, food_items.image_url, food_items.created_at, food_items.updated_at FROM food_items WHERE food_items.hotel_id = 1 ORDER BY food_items.`name` ASC
+2026-11-25 21:57:22.893 [eventLoopGroupProxy-4-2] TRACE i.k.s.p.statuspages.StatusPages - No status code found for call: /hotels/1/menu
+2026-11-25 21:57:41.437 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:57:41.438 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:57:41.439 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:58:11.442 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:58:11.446 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:58:11.446 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:58:41.454 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:58:41.459 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:58:41.460 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:58:52.536 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@74c89b98 is alive
+2026-11-25 21:58:53.467 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec is alive
+2026-11-25 21:59:11.469 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:59:11.474 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:59:11.475 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 21:59:41.482 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:59:41.485 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 21:59:41.486 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:00:11.492 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:00:11.509 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:00:11.509 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:00:41.513 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:00:41.514 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:00:41.514 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:00:43.043 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@74c89b98 is alive
+2026-11-25 22:00:44.550 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec is alive
+2026-11-25 22:01:11.519 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:01:11.520 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:01:11.520 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:01:41.523 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:01:41.524 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:01:41.524 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:02:11.530 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:02:11.532 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:02:11.532 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+2026-11-25 22:02:33.537 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@74c89b98 is alive
+2026-11-25 22:02:35.629 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - keepalive: connection com.mysql.cj.jdbc.ConnectionImpl@4eb45fec is alive
+2026-11-25 22:02:41.535 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Before cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:02:41.536 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - After  cleanup stats (total=2/10, idle=2/2, active=0, waiting=0)
+2026-11-25 22:02:41.536 [namma-ooru-food-db:housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - namma-ooru-food-db - Fill pool skipped, pool has sufficient level or currently being filled.
+
+> Task :server:run FAILED
+
+[Incubating] Problems report is available at: file:///Users/apple/Downloads/Learning_Projects/KMP/NammaOoruFood/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server:run' (registered by plugin class 'org.gradle.api.plugins.ApplicationPlugin').
+> Process 'command '/Users/apple/Library/Java/JavaVirtualMachines/azul-21.0.13/Contents/Home/bin/java'' finished with non-zero exit value 137 (this value may indicate that the process was terminated with the SIGKILL signal, which is often caused by the system running out of memory)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 8m
+6 actionable tasks: 3 executed, 3 up-to-date

@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CustomerDto(
     val id: Long,
-    val username: String,
+    val username: String?,
     val displayName: String,
     val phone: String? = null,
     val active: Boolean,

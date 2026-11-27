@@ -5,6 +5,8 @@ import dev.livin.nammaoorufood.database.Database
 import dev.livin.nammaoorufood.notification.NotificationRepository
 import java.time.Clock
 import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 data class RetentionResult(val sessionsDeleted: Int, val notificationsDeleted: Int)
 
@@ -19,6 +21,14 @@ class RetentionService(
 ) {
     fun runOnce(): RetentionResult = db.transaction { conn ->
         val now = clock.instant()
+        val cutoff = LocalDateTime.ofInstant(now - notificationRetention, ZoneOffset.UTC)
+        conn.prepareStatement(
+            "DELETE FROM telegram_outbox WHERE (sent_at IS NOT NULL AND sent_at < ?) OR (failed_at IS NOT NULL AND failed_at < ?)",
+        ).use {
+            it.setObject(1, cutoff)
+            it.setObject(2, cutoff)
+            it.executeUpdate()
+        }
         RetentionResult(
             sessions.deleteInactiveBefore(conn, now - sessionGrace),
             notifications.deleteCreatedBefore(conn, now - notificationRetention),

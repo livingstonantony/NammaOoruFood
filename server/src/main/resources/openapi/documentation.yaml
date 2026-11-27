@@ -158,6 +158,34 @@ paths:
           $ref: '#/components/responses/Error'
         '429':
           $ref: '#/components/responses/Error'
+  /auth/telegram:
+    post:
+      tags: [Auth]
+      summary: Sign in with Telegram Mini App data
+      description: Available when TELEGRAM_BOT_TOKEN is configured. Verifies raw Telegram initData and creates a separate customer account when necessary.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [initData]
+              properties:
+                initData:
+                  type: string
+                  maxLength: 8192
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
   /auth/refresh:
     post:
       tags: [Auth]
@@ -1117,6 +1145,7 @@ components:
           example: 1
         username:
           type: string
+          nullable: true
           example: "john_customer"
         displayName:
           type: string
@@ -1596,6 +1625,7 @@ components:
           example: 5
         username:
           type: string
+          nullable: true
           example: "john_customer"
         displayName:
           type: string

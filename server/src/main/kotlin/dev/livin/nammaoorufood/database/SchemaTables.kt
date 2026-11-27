@@ -37,8 +37,8 @@ private fun Table.utcDateTime(name: String) = registerColumn(name, UtcDateTimeCo
 
 object UsersTable : Table("users") {
     val id = long("id").autoIncrement()
-    val username = varchar("username", 50).uniqueIndex("uq_users_username")
-    val passwordHash = varchar("password_hash", 255)
+    val username = varchar("username", 50).nullable().uniqueIndex("uq_users_username")
+    val passwordHash = varchar("password_hash", 255).nullable()
     val role = customEnumeration(
         "role",
         "ENUM('CUSTOMER','HOTEL_OWNER','ADMIN')",

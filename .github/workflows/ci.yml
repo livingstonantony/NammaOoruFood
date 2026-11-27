@@ -36,4 +36,4 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :app:shared:jvmTest :app:desktopApp:compileKotlin :app:shared:compileKotlinWasmJs :app:shared:compileKotlinJs --console=plain
+      - run: ./gradlew :app:shared:jvmTest :app:desktopApp:compileKotlin :app:shared:compileKotlinWasmJs :app:shared:compileKotlinJs :telegramMiniApp:jsBrowserProductionWebpack --console=plain

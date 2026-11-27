@@ -164,7 +164,7 @@ fun ProfileScreen(user: UserDto, session: SessionManager) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AppCard {
                 Text(user.displayName, style = MaterialTheme.typography.titleLarge)
-                Text("@${user.username}", style = MaterialTheme.typography.bodyMedium)
+                user.username?.let { Text("@$it", style = MaterialTheme.typography.bodyMedium) }
             }
             OutlinedButton(
                 enabled = !loggingOut,

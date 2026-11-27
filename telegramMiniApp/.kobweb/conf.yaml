@@ -1,0 +1,11 @@
+site:
+  title: "Namma Ooru Food"
+server:
+  files:
+    dev:
+      contentRoot: "build/processedResources/js/main/public"
+      script: "build/kotlin-webpack/js/developmentExecutable/telegramMiniApp.js"
+    prod:
+      script: "build/kotlin-webpack/js/productionExecutable/telegramMiniApp.js"
+      siteRoot: ".kobweb/site"
+  port: 8083

@@ -15,6 +15,11 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlin.time.Duration.Companion.minutes
+import dev.livin.nammaoorufood.telegram.TelegramInitDataVerifier
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class TelegramLoginRequest(val initData: String)
 
 data class UserPrincipal(val userId: Long, val role: Role, val sessionId: Long)
 
@@ -50,7 +55,7 @@ fun UserPrincipal.requireRole(vararg allowed: Role) {
     if (role !in allowed) throw ForbiddenException()
 }
 
-fun Route.authRoutes(auth: AuthService) {
+fun Route.authRoutes(auth: AuthService, telegram: TelegramInitDataVerifier? = null) {
     route("/auth") {
         rateLimit(LOGIN_LIMIT) {
             post("/register") {
@@ -61,6 +66,11 @@ fun Route.authRoutes(auth: AuthService) {
             }
             post("/login") {
                 call.respond(auth.login(call.receive<LoginRequest>()))
+            }
+            if (telegram != null) {
+                post("/telegram") {
+                    call.respond(auth.loginTelegram(telegram.verify(call.receive<TelegramLoginRequest>().initData)))
+                }
             }
             post("/refresh") {
                 call.respond(auth.refresh(call.receive<RefreshRequest>().refreshToken))

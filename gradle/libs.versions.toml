@@ -27,6 +27,8 @@ koin = "4.1.0"
 composeNavigationEvent = "1.1.0"
 filekit = "0.16.0"
 coil = "3.6.3"
+kobweb = "0.25.1"
+compose-html = "1.11.1"
 
 [libraries]
 filekit-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
@@ -90,6 +92,8 @@ ktor-serverSwagger = { module = "io.ktor:ktor-server-swagger-jvm", version.ref =
 ktor-serverRateLimit = { module = "io.ktor:ktor-server-rate-limit-jvm", version.ref = "ktor" }
 bcrypt = { module = "at.favre.lib:bcrypt", version = "0.10.2" }
 wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
+kobweb-core = { module = "com.varabyte.kobweb:kobweb-core", version.ref = "kobweb" }
+compose-html-core = { module = "org.jetbrains.compose.html:html-core", version.ref = "compose-html" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -100,3 +104,4 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+kobweb-application = { id = "com.varabyte.kobweb.application", version.ref = "kobweb" }

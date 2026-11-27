@@ -23,7 +23,7 @@ class AuthTest {
     private fun config(extra: Map<String, String> = emptyMap()) = AppConfig.fromEnv(
         System.getenv() + mapOf(
             "APP_ENV" to "test",
-            "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
+            "DB_URL" to testDatabaseUrl(),
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",
         ) + extra,
     )
@@ -31,10 +31,11 @@ class AuthTest {
     @BeforeTest
     fun cleanDb() {
         val c = config().database
+        dev.livin.nammaoorufood.database.DatabaseFactory.migrate(c)
         DriverManager.getConnection(c.url, c.user, c.password).use { conn ->
             conn.createStatement().use { st ->
                 st.execute("SET FOREIGN_KEY_CHECKS = 0")
-                listOf("notifications", "auth_sessions", "pickup_tokens", "order_items", "orders", "food_items", "hotels", "users").forEach { st.execute("TRUNCATE TABLE $it") }
+                listOf("telegram_outbox", "telegram_identities", "notifications", "auth_sessions", "pickup_tokens", "order_items", "orders", "food_items", "hotels", "users").forEach { st.execute("TRUNCATE TABLE $it") }
                 st.execute("SET FOREIGN_KEY_CHECKS = 1")
             }
         }

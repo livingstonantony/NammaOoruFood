@@ -22,7 +22,7 @@ class OrderApiTest {
     private fun config() = AppConfig.fromEnv(
         System.getenv() + mapOf(
             "APP_ENV" to "test",
-            "DB_URL" to "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
+            "DB_URL" to testDatabaseUrl(),
             "LOGIN_RATE_LIMIT_PER_MINUTE" to "1000",
         ),
     )
@@ -30,10 +30,11 @@ class OrderApiTest {
     @BeforeTest
     fun cleanDb() {
         val c = config().database
+        dev.livin.nammaoorufood.database.DatabaseFactory.migrate(c)
         DriverManager.getConnection(c.url, c.user, c.password).use { conn ->
             conn.createStatement().use { st ->
                 st.execute("SET FOREIGN_KEY_CHECKS = 0")
-                listOf("notifications", "auth_sessions", "hotel_operating_hours", "menu_categories", "pickup_tokens", "hotel_token_counters", "order_items", "orders", "food_items", "hotels", "users")
+                listOf("telegram_outbox", "telegram_identities", "notifications", "auth_sessions", "hotel_operating_hours", "menu_categories", "pickup_tokens", "hotel_token_counters", "order_items", "orders", "food_items", "hotels", "users")
                     .forEach { st.execute("TRUNCATE TABLE $it") }
                 st.execute("SET FOREIGN_KEY_CHECKS = 1")
             }

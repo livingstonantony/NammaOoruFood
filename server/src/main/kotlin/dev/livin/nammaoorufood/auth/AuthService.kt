@@ -12,6 +12,8 @@ import dev.livin.nammaoorufood.user.toDto
 import kotlinx.serialization.Serializable
 import java.sql.SQLIntegrityConstraintViolationException
 import java.time.Clock
+import dev.livin.nammaoorufood.telegram.VerifiedTelegramUser
+import java.sql.Connection
 
 @Serializable
 data class RegisterRequest(val username: String, val password: String, val displayName: String, val phone: String? = null)
@@ -98,6 +100,43 @@ class AuthService(
         db.transaction { sessions.isActive(it, sessionId, clock.instant()) }
 
     fun currentUser(userId: Long): User? = db.transaction { users.findById(userId) }?.takeIf { it.active }
+
+    fun loginTelegram(identity: VerifiedTelegramUser): AuthResponse {
+        fun createOrFind(): AuthResponse = db.transaction { conn ->
+            startSession(conn, resolveTelegramCustomer(conn, identity))
+        }
+        return try {
+            createOrFind()
+        } catch (e: SQLIntegrityConstraintViolationException) {
+            createOrFind()
+        }
+    }
+
+    fun resolveTelegramCustomer(conn: Connection, identity: VerifiedTelegramUser): User {
+        val existingId = conn.prepareStatement("SELECT user_id FROM telegram_identities WHERE telegram_user_id = ?").use { statement ->
+            statement.setLong(1, identity.id)
+            statement.executeQuery().use { result -> if (result.next()) result.getLong(1) else null }
+        }
+        val userId = existingId ?: run {
+            val newUserId = conn.prepareStatement(
+                "INSERT INTO users (username, password_hash, role, display_name) VALUES (NULL, NULL, 'CUSTOMER', ?)",
+                java.sql.Statement.RETURN_GENERATED_KEYS,
+            ).use { statement ->
+                statement.setString(1, identity.displayName)
+                statement.executeUpdate()
+                statement.generatedKeys.use { keys -> check(keys.next()); keys.getLong(1) }
+            }
+            conn.prepareStatement("INSERT INTO telegram_identities (telegram_user_id, user_id, telegram_username) VALUES (?, ?, ?)").use { statement ->
+                statement.setLong(1, identity.id)
+                statement.setLong(2, newUserId)
+                statement.setString(3, identity.username)
+                statement.executeUpdate()
+            }
+            newUserId
+        }
+        return users.findById(userId)?.takeIf { it.active && it.role == Role.CUSTOMER }
+            ?: throw UnauthorizedException("Account unavailable")
+    }
 
     private fun startSession(conn: java.sql.Connection, user: User): AuthResponse {
         val now = clock.instant()

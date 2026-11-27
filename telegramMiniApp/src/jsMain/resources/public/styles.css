@@ -1,0 +1,30 @@
+:root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; background: #f7f6f2; color: #23332d; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 700px; margin: auto; padding: 20px 16px 48px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 1.65rem; letter-spacing: -.03em; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; }
+button { font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand { color: #22734d; font-weight: 750; font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 5px; }
+.muted { color: #66776e; font-size: .9rem; line-height: 1.5; }
+.section-title { margin: 22px 0 12px; display: flex; justify-content: space-between; align-items: center; }
+.card { background: white; border: 1px solid #e6ebe5; border-radius: 16px; padding: 16px; margin-bottom: 10px; box-shadow: 0 3px 14px #1d44230a; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stack { display: grid; gap: 8px; }
+.badge { color: #257447; background: #e8f5e9; border-radius: 20px; font-size: .75rem; font-weight: 700; padding: 5px 9px; white-space: nowrap; }
+.button { border: 0; border-radius: 10px; background: #236d4b; color: white; padding: 10px 15px; font-weight: 650; }
+.button.secondary { background: #edf3ee; color: #285d43; }
+.button.danger { background: #fff1ed; color: #a53d2b; }
+.wide { width: 100%; }
+.counter { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.counter button { width: 34px; height: 34px; padding: 0; }
+.error { background: #fff1ed; color: #923e2e; border-radius: 12px; padding: 12px; margin: 12px 0; line-height: 1.4; }
+.notice { background: #eef5eb; color: #315d3b; border-radius: 12px; padding: 12px; margin: 12px 0; line-height: 1.4; }
+.price { font-weight: 700; color: #285d43; }
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+input { font: inherit; width: 100%; border: 1px solid #d5ded6; border-radius: 10px; padding: 11px; }
+small { color: #66776e; line-height: 1.4; }

@@ -10,6 +10,10 @@ application {
     mainClass = "dev.livin.nammaoorufood.ApplicationKt"
 }
 
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.projectDir
+}
+
 dependencies {
     api(project(":core"))
     implementation(libs.logback)

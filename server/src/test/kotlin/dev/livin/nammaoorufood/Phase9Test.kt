@@ -28,7 +28,7 @@ import java.time.ZoneOffset
 import kotlin.test.*
 
 class Phase9Test {
-    private val dbUrl = "jdbc:mysql://localhost:3306/nammaoorufood_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+    private val dbUrl = testDatabaseUrl()
     private val testConfig = AppConfig.fromEnv(
         System.getenv() + mapOf("APP_ENV" to "test", "DB_URL" to dbUrl),
     )

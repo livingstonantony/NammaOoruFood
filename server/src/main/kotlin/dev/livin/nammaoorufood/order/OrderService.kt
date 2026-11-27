@@ -14,6 +14,7 @@ import dev.livin.nammaoorufood.plugins.NotFoundException
 import dev.livin.nammaoorufood.plugins.ValidationException
 import dev.livin.nammaoorufood.user.Role
 import dev.livin.nammaoorufood.websocket.ServerEventBus
+import dev.livin.nammaoorufood.telegram.TelegramOutbox
 import java.math.BigDecimal
 import java.sql.SQLIntegrityConstraintViolationException
 import java.time.Clock
@@ -67,7 +68,9 @@ class OrderService(
                     hotels.decrementStock(conn, hotel.id, itemId, qty)
                 }
                 ServerEventBus.broadcast("MENU_UPDATED", hotel.id)
-                val dto = orders.findById(conn, id)!!.toDto()
+                val order = orders.findById(conn, id)!!
+                TelegramOutbox.orderChanged(conn, order)
+                val dto = order.toDto()
                 ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
                 dto to true
             }
@@ -112,17 +115,24 @@ class OrderService(
     fun cancel(p: UserPrincipal, orderId: Long): OrderDto {
         if (p.role != Role.CUSTOMER) throw ForbiddenException()
         val dto = db.transaction { conn ->
-            val order = orders.findByIdForUpdate(conn, orderId)?.takeIf { it.customerId == p.userId }
-                ?: throw NotFoundException("Order not found")
-            if (!OrderStateMachine.canTransition(order.status, OrderStatus.CANCELLED)) {
-                throw ConflictException("Order can no longer be cancelled")
-            }
-            orders.updateStatus(conn, order.id, OrderStatus.CANCELLED)
-            orders.findById(conn, order.id)!!.toDto()
+            cancelCustomerOrder(conn, p.userId, orderId)
         }
+
         ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
         ServerEventBus.broadcast("MENU_UPDATED", dto.hotelId)
         return dto
+    }
+
+    fun cancelCustomerOrder(conn: java.sql.Connection, customerId: Long, orderId: Long): OrderDto {
+        val order = orders.findByIdForUpdate(conn, orderId)?.takeIf { it.customerId == customerId }
+            ?: throw NotFoundException("Order not found")
+        if (!OrderStateMachine.canTransition(order.status, OrderStatus.CANCELLED)) {
+            throw ConflictException("Order can no longer be cancelled")
+        }
+        orders.updateStatus(conn, order.id, OrderStatus.CANCELLED)
+        val updated = orders.findById(conn, order.id)!!
+        TelegramOutbox.orderChanged(conn, updated)
+        return updated.toDto()
     }
 
     fun updateStatus(p: UserPrincipal, orderId: Long, status: OrderStatus): OrderDto {
@@ -148,6 +158,7 @@ class OrderService(
             orders.updateStatus(conn, order.id, target)
             val updated = orders.findById(conn, order.id)!!
             notify(conn, updated)
+            TelegramOutbox.orderChanged(conn, updated)
             val dto = updated.toDto()
             ServerEventBus.broadcast("ORDER_UPDATED", dto.id)
             dto
@@ -169,9 +180,12 @@ class OrderService(
     fun active(p: UserPrincipal): List<OrderDto> {
         if (p.role != Role.CUSTOMER) throw ForbiddenException()
         return db.transaction { conn ->
-            orders.listActiveForCustomer(conn, p.userId).map { it.toDto() }
+            activeCustomerOrders(conn, p.userId)
         }
     }
+
+    fun activeCustomerOrders(conn: java.sql.Connection, customerId: Long): List<OrderDto> =
+        orders.listActiveForCustomer(conn, customerId).map { it.toDto() }
 
     fun ownerOrders(p: UserPrincipal, hotelId: Long?, statuses: Set<OrderStatus>, page: Int, pageSize: Int): OrderPage {
         if (p.role != Role.HOTEL_OWNER) throw ForbiddenException()

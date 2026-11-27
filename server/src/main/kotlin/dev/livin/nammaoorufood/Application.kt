@@ -39,6 +39,13 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import dev.livin.nammaoorufood.telegram.TelegramInitDataVerifier
+import dev.livin.nammaoorufood.telegram.TelegramBot
+import dev.livin.nammaoorufood.telegram.TelegramHttpTransport
+import dev.livin.nammaoorufood.telegram.TelegramApiException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -53,7 +60,7 @@ fun main() {
 data class HealthResponse(val status: String)
 
 fun Application.module(
-    config: AppConfig = AppConfig.fromEnv(),
+    config: AppConfig = AppConfig.fromSystemEnvironment(),
     imageKit: ImageKitConfig = ImageKitConfig.from(environment.config),
 ) {
     DatabaseFactory.migrate(config.database)
@@ -96,6 +103,38 @@ fun Application.module(
     }
     monitor.subscribe(ApplicationStopping) { retentionJob.cancel() }
 
+    if (config.telegramBotToken != null && config.telegramBotPollingEnabled) {
+        val bot = TelegramBot(db, authService, orderService, TelegramHttpTransport(config.telegramBotToken), log, config.telegramMiniAppUrl)
+        val pollJob = launch {
+            while (true) {
+                try {
+                    withContext(Dispatchers.IO) { bot.pollOnce() }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: TelegramApiException) {
+                    log.warn("Telegram update polling failed with API status {} (409 can indicate a webhook or another poller)", e.code)
+                    delay(Duration.ofSeconds((e.retryAfter ?: 5).coerceIn(1, 86400).toLong()).toMillis().milliseconds)
+                } catch (e: Exception) {
+                    log.warn("Telegram update polling failed: {}", e.javaClass.simpleName)
+                    delay(Duration.ofSeconds(5).toMillis().milliseconds)
+                }
+            }
+        }
+        val deliveryJob = launch {
+            while (true) {
+                try {
+                    if (!withContext(Dispatchers.IO) { bot.deliverOnce() }) delay(1000)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    log.warn("Telegram outbox worker failed: {}", e.javaClass.simpleName)
+                    delay(Duration.ofSeconds(5).toMillis().milliseconds)
+                }
+            }
+        }
+        monitor.subscribe(ApplicationStopping) { pollJob.cancel(); deliveryJob.cancel() }
+    }
+
     // Browser clients (admin web) run on another origin. Production must list origins explicitly.
     install(CORS) {
         allowMethod(HttpMethod.Get); allowMethod(HttpMethod.Post); allowMethod(HttpMethod.Put)
@@ -118,7 +157,7 @@ fun Application.module(
 
     routing {
         websocketRoutes()
-        authRoutes(authService)
+        authRoutes(authService, config.telegramBotToken?.let(::TelegramInitDataVerifier))
         imageKitRoutes(imageKit)
         hotelRoutes(hotelService)
         orderRoutes(orderService)

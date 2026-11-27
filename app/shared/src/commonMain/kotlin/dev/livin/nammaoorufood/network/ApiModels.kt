@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 enum class Role { CUSTOMER, HOTEL_OWNER, ADMIN }
 
 @Serializable
-data class UserDto(val id: Long, val username: String, val displayName: String, val role: Role)
+data class UserDto(val id: Long, val username: String?, val displayName: String, val role: Role)
 
 @Serializable
 data class LoginRequest(val username: String, val password: String)

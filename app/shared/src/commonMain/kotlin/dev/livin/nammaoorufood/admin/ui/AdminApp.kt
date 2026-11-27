@@ -223,7 +223,7 @@ private fun CustomersScreen(vm: AdminCustomersViewModel) {
                     items(p.data.items, key = { it.id }) { c ->
                         AppCard {
                             Text(c.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("@${c.username} · ${c.orderCount} orders", style = MaterialTheme.typography.bodyMedium)
+                            Text("${c.username?.let { "@$it" } ?: "Telegram customer"} · ${c.orderCount} orders", style = MaterialTheme.typography.bodyMedium)
                             Text(if (c.active) "✔ Active" else "⛔ Deactivated", style = MaterialTheme.typography.labelLarge)
                             OutlinedButton(enabled = c.id !in state.busy, onClick = { if (c.active) confirm = c else vm.onIntent(AdminCustomersIntent.SetActive(c.id, true)) }) {
                                 Text(if (c.active) "Deactivate" else "Reactivate")

@@ -1,0 +1,1 @@
+ALTER TABLE telegram_outbox ADD COLUMN open_mini_app BOOLEAN NOT NULL DEFAULT FALSE;
